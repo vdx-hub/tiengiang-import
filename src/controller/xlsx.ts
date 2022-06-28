@@ -1,7 +1,7 @@
 import xlsx, { IJsonSheet, ISettings } from "json-as-xlsx"
 
 const defaultSetting: ISettings = {
-  fileName: "MySpreadsheet", // Name of the resulting spreadsheet
+  fileName: "DefaultName", // Name of the resulting spreadsheet
   extraLength: 3, // A bigger number means that columns will be wider
   writeOptions: {
     type: "buffer",
@@ -10,7 +10,7 @@ const defaultSetting: ISettings = {
 }
 
 function createXLSX(data: IJsonSheet[], settings = defaultSetting) {
-  return xlsx(data, settings);
+  return xlsx(data, { ...defaultSetting, ...settings });
 }
 
 export { createXLSX }

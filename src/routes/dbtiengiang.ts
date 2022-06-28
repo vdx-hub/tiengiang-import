@@ -1,7 +1,10 @@
 import express from 'express';
 const router = express.Router();
-import { joinTable, queryTable } from '@ctl/tiengiang';
-import { createXLSX } from '@ctl/xlsx';
+import { join2Table, queryTable } from '@controller/tiengiang';
+import { createXLSX } from '@controller/xlsx';
+import { processData } from '@mapping/index';
+import { configLoad } from '@config/index';
+import { IJsonSheet } from 'json-as-xlsx';
 import { log } from 'console';
 
 router.get('/', async function (req, res) {
@@ -23,7 +26,7 @@ router.post('/getData/:tableName', async function (req, res) {
 
 router.post('/joinData', async function (req, res) {
   try {
-    const result = await joinTable({
+    const result = await join2Table({
       table1Name: req.body.tableName1,
       table2Name: req.body.tableName2,
       table1Key: req.body.table1Key,
@@ -39,45 +42,84 @@ router.post('/joinData', async function (req, res) {
   }
 });
 
-router.get('/getXlsx', async function (req, res) {
-  let data = [
-    {
-      sheet: "Adults",
-      columns: [
-        { label: "User", value: "user" }, // Top level data
-        { label: "Age", value: (row: any) => row.age + " years" }, // Custom format
-        { label: "Phone", value: (row: any) => (row.more ? row.more.phone || "" : "") }, // Run functions
-      ],
-      content: [
-        { user: "Andrea", age: 20, more: { phone: "11111111" } },
-        { user: "Luis", age: 21, more: { phone: "12345678" } },
-      ],
-    },
-    {
-      sheet: "Children",
-      columns: [
-        { label: "User", value: "user" }, // Top level data
-        { label: "Age", value: "age", format: '# "years"' }, // Column format
-        { label: "Phone", value: "user.more.phone", format: "(###) ###-####" }, // Deep props and column format
-      ],
-      content: [
-        { user: "Manuel", age: 16, more: { phone: 9999999900 } },
-        { user: "Ana", age: 17, more: { phone: 8765432135 } },
-      ],
-    },
-  ]
-  const buffer = createXLSX(data)
+router.get('/getXlsx/:tableName', async function (req, res) {
+  const data = await processData(req.params.tableName);
+  const buffer = createXLSX(data, {
+    fileName: 'abc',
+    extraLength: req.body.extraLength
+  });
   if (buffer) {
     res.writeHead(200, {
       "Content-Type": "application/octet-stream",
-      "Content-disposition": "attachment; filename=MySheet.xlsx",
+      "Content-disposition": `attachment; filename=${req.params.tableName}.xlsx`,
     })
     res.end(buffer)
   }
   else {
     res.send('Something wrong!')
   }
+})
 
+router.post('/getXlsx/:tableName1/:tableName2', async function (req, res) {
+  try {
+    const xlsxData: IJsonSheet[] = configLoad(req.body.sheetName, req.body.fieldMapping);
+    const data = await join2Table({
+      table1Name: req.params.tableName1,
+      table2Name: req.params.tableName2,
+      table1Key: req.body.table1Key,
+      table2Key: req.body.table2Key,
+      table1Fields: req.body.table1Fields,
+      table2Fields: req.body.table2Fields,
+    });
+    if (data?.data) {
+      xlsxData[0].content = data.data
+    }
+    const buffer = createXLSX(xlsxData, {
+      fileName: 'abc',
+      extraLength: req.body.extraLength
+    });
+    if (buffer) {
+      res.writeHead(200, {
+        "Content-Type": "application/octet-stream",
+        "Content-disposition": `attachment; filename=${req.params.tableName1}_${req.params.tableName2}.xlsx`,
+      })
+      res.end(buffer)
+    }
+    else {
+      res.send('Something wrong!')
+    }
+
+  } catch (err: any) {
+    res.status(500)
+    res.send(err.message)
+  }
+});
+router.post('/getXlsx/:tableName', async function (req, res) {
+  try {
+    const xlsxData: IJsonSheet[] = configLoad(req.body.sheetName, req.body.fieldMapping);
+    const data = await queryTable(req.params.tableName, req.body.fields);
+    if (data?.data) {
+      xlsxData[0].content = data.data
+    }
+    const buffer = createXLSX(xlsxData, {
+      fileName: 'abc',
+      extraLength: req.body.extraLength || 3
+    });
+    if (buffer) {
+      res.writeHead(200, {
+        "Content-Type": "application/octet-stream",
+        "Content-disposition": `attachment; filename=${req.params.tableName}.xlsx`,
+      })
+      res.end(buffer)
+    }
+    else {
+      res.send('Something wrong!')
+    }
+
+  } catch (err: any) {
+    res.status(500)
+    res.send(err.message)
+  }
 })
 
 export default router
