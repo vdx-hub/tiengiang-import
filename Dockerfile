@@ -1,9 +1,11 @@
 FROM node:alpine
 RUN mkdir /app
 WORKDIR /app
-COPY node_modules/ ./
+# COPY node_modules/ ./
 COPY package.json ./
+COPY tsconfig.json ./
 COPY ./src ./src
+RUN npm install
 
 # dev with nodemon
 # RUN npm install nodemon && npm install

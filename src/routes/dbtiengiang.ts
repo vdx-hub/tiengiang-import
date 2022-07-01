@@ -2,10 +2,8 @@ import express from 'express';
 const router = express.Router();
 import { join2Table, queryTable } from '@controller/tiengiang';
 import { createXLSX } from '@controller/xlsx';
-import { processData } from '@mapping/index';
 import { configLoad } from '@config/index';
 import { IJsonSheet } from 'json-as-xlsx';
-import { log } from 'console';
 
 router.get('/', async function (req, res) {
   res.status(200).json({
@@ -41,24 +39,6 @@ router.post('/joinData', async function (req, res) {
     res.send(err.message)
   }
 });
-
-router.get('/getXlsx/:tableName', async function (req, res) {
-  const data = await processData(req.params.tableName);
-  const buffer = createXLSX(data, {
-    fileName: 'abc',
-    extraLength: req.body.extraLength
-  });
-  if (buffer) {
-    res.writeHead(200, {
-      "Content-Type": "application/octet-stream",
-      "Content-disposition": `attachment; filename=${req.params.tableName}.xlsx`,
-    })
-    res.end(buffer)
-  }
-  else {
-    res.send('Something wrong!')
-  }
-})
 
 router.post('/getXlsx/:tableName1/:tableName2', async function (req, res) {
   try {

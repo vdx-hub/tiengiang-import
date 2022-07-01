@@ -101,9 +101,6 @@
       "@routes/*": [
         "routes/*"
       ],
-      "@mapping/*": [
-        "mapping/*"
-      ],
       "@config/*": [
         "config/*"
       ],
