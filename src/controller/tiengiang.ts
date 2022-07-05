@@ -1,5 +1,5 @@
 import { log } from "console"
-import { sql, poolPromise } from '@db/mssql'
+import { poolPromise } from '@db/mssql'
 
 async function queryTable(tableName: string, listField?: string[]) {
   log('queryTable', tableName);

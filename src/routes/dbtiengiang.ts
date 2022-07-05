@@ -2,10 +2,10 @@ import express from 'express';
 const router = express.Router();
 import { join2Table, queryTable } from '@controller/tiengiang';
 import { createXLSX } from '@controller/xlsx';
-import { configLoad } from '@config/index';
+import { configLoad } from '@config/xlsxExport';
 import { IJsonSheet } from 'json-as-xlsx';
 
-router.get('/', async function (req, res) {
+router.get('/pingTG', async function (_req, res) {
   res.status(200).json({
     abc: '200ok'
   })
@@ -74,6 +74,7 @@ router.post('/getXlsx/:tableName1/:tableName2', async function (req, res) {
     res.send(err.message)
   }
 });
+
 router.post('/getXlsx/:tableName', async function (req, res) {
   try {
     const xlsxData: IJsonSheet[] = configLoad(req.body.sheetName, req.body.fieldMapping);
