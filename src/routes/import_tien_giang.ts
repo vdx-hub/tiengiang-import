@@ -6,7 +6,7 @@ var upload = multer();
 const router = express.Router();
 router.post('/importXlsx/preview', upload.single('file'), async function (req, res) {
   if (req.file) {
-    const metadata = await previewXLSX(req.file?.buffer, req.body.config, +req.body.previewNo + 1)
+    const metadata = await previewXLSX({ xlsxBuffer: req.file?.buffer, fileName: req.file.originalname }, req.body.config, req.body.skipRowNo, req.body.previewNo)
     res.status(200).send(metadata)
   }
   else {

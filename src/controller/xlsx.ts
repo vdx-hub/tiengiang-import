@@ -48,20 +48,31 @@ function getMetaDataXLSX(xlsxBuffer: Buffer) {
   return data
 }
 
-async function previewXLSX(xlsxBuffer: Buffer, configStr: string, previewNo?: number) {
-  var workbook = XLSX.read(xlsxBuffer, { type: "buffer", sheetRows: previewNo });
-  let data: any = {};
+async function previewXLSX({ xlsxBuffer, fileName }: any, configStr: string, skipRowNo: number = 0, previewNo: number = 10) {
+  let rowToGet: number = Number(previewNo) + Number(skipRowNo) + 1;
+  var workbook = XLSX.read(xlsxBuffer, { type: "buffer", sheetRows: rowToGet });
+  let responseData: any = {};
   var config;
   try {
     config = JSON.parse(configStr || "{}");
   }
   catch (err: any) {
-    data = err.message
+    responseData = err.message
   }
   if (config) {
-    data = await mapConfigSheet(workbook, config)
+    let sheetData = await mapConfigSheet(workbook, config);
+    for (let collection in sheetData) {
+      responseData[collection] = [];
+      if (skipRowNo && Array.isArray(sheetData[collection])) {
+        sheetData[collection].splice(0, skipRowNo)
+      }
+      for (let record of sheetData[collection]) {
+        const dataNghiepVu = addMetadataImport(record, fileName);
+        responseData[collection].push(dataNghiepVu)
+      }
+    }
   }
-  return data;
+  return responseData;
 }
 
 async function processXLSX({ xlsxBuffer, fileName }: any, configStr: string, keyConfigStr: string, skipRowNo?: number) {
