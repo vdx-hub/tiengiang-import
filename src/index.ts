@@ -2,7 +2,9 @@ import bodyParser from 'body-parser';
 import https from 'https';
 import express from 'express';
 
-import TienGiangRouter from "@routes/dbtiengiang";
+import TienGiangRouter from "@routes/db_tien_giang";
+import ImportNghiepVuRouter from "@routes/import_tien_giang";
+
 
 https.globalAgent.options.rejectUnauthorized = false;
 
@@ -17,7 +19,7 @@ app.use(
     parameterLimit: 50000,
   })
 );
-app.use((err: any, req: any, res: any, next: any) => {
+app.use((err: any, _req: any, res: any, _next: any) => {
   res.status(err.status || 500);
   res.json({
     message: err.message,
@@ -25,6 +27,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   });
 });
 app.use('/tiengiang', TienGiangRouter)
-app.listen(9000, () => {
-  console.log("Server is up!")
-});
+app.use('/tiengiang', ImportNghiepVuRouter)
+app.listen(9000, async () => {
+  console.log("Server is up!");
+})
