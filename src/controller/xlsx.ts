@@ -1,7 +1,7 @@
 import { _client } from "@db/mongodb";
-import { log } from "console";
 import jsonxlsx, { IJsonSheet, ISettings } from "json-as-xlsx"
 import XLSX from 'xlsx';
+import DBUtils from '@controller/mongodb'
 
 const defaultSetting: ISettings = {
   fileName: "DefaultName", // Name of the resulting spreadsheet
@@ -64,22 +64,43 @@ async function previewXLSX(xlsxBuffer: Buffer, configStr: string, previewNo?: nu
   return data;
 }
 
-async function processXLSX(xlsxBuffer: Buffer, configStr: string) {
+async function processXLSX({ xlsxBuffer, fileName }: any, configStr: string, keyConfigStr: string, skipRowNo?: number) {
   var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
-  let data: any = {};
-  var config;
+  let responseData: any = {};
+  var config, keyConfig;
   try {
     config = JSON.parse(configStr || "{}");
+    keyConfig = JSON.parse(keyConfigStr || "{}");
   }
   catch (err: any) {
-    data = err.message
+    responseData = err.message
   }
   if (config) {
-    data = await mapConfigSheet(workbook, config)
-    let test = _client.db('CSDL_MT').collection('C_TESTIMPORT').find().toArray();
-    log(test)
+    let sheetData = await mapConfigSheet(workbook, config);
+    for (let collection in sheetData) {
+      responseData[collection] = {
+        upsertedCount: 0,
+        matchedCount: 0
+      }
+      if (skipRowNo && Array.isArray(sheetData[collection])) {
+        sheetData[collection].splice(0, skipRowNo)
+      }
+      for (let record of sheetData[collection]) {
+        const dataToCreate = addMetadataImport(record, fileName);
+        let result = await DBUtils.createOneIfNotExits(_client, {
+          dbName: "CSDL_MT",
+          collectionName: collection,
+          filter: {
+            sourceRefId: record[keyConfig?.[collection]]
+          },
+          insertData: dataToCreate
+        })
+        responseData[collection].matchedCount += result.matchedCount;
+        responseData[collection].upsertedCount += result.upsertedCount;
+      }
+    }
   }
-  return data;
+  return responseData;
 }
 
 async function editCell(worksheet: XLSX.WorkSheet, cell: string, value: any) {
@@ -100,5 +121,15 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, config: any) {
   return data
 }
 
+function addMetadataImport(record: any, fileName: string) {
+  let data = record;
+  data['sourceRef'] = `ImportXlsx_${fileName}`;
+  data['username'] = `ImportSevice`;
+  data['openAccess'] = 0;
+  data['order'] = 0;
+  data['site'] = 'csdl_mt';
+  data['storage'] = 'regular';
+  return data;
+}
 
 export { createXLSX, getMetaDataXLSX, processXLSX, previewXLSX }

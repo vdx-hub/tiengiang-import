@@ -16,7 +16,7 @@ router.post('/importXlsx/preview', upload.single('file'), async function (req, r
 
 router.post('/importXlsx/confirmed', upload.single('file'), async function (req, res) {
   if (req.file) {
-    const metadata = await processXLSX(req.file?.buffer, req.body.config)
+    const metadata = await processXLSX({ xlsxBuffer: req.file?.buffer, fileName: req.file.originalname }, req.body.config, req.body.key, req.body.skipRowNo)
     res.status(200).send(metadata)
   }
   else {

@@ -2,8 +2,8 @@ import bodyParser from 'body-parser';
 import https from 'https';
 import express from 'express';
 
-import TienGiangRouter from "@routes/dbtiengiang";
-import ImportNghiepVuRouter from "@routes/importNghiepVu";
+import TienGiangRouter from "@routes/db_tien_giang";
+import ImportNghiepVuRouter from "@routes/import_tien_giang";
 
 
 https.globalAgent.options.rejectUnauthorized = false;
