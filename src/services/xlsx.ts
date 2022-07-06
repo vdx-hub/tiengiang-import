@@ -2,6 +2,7 @@ import { _client } from "@db/mongodb";
 import jsonxlsx, { IJsonSheet, ISettings } from "json-as-xlsx"
 import XLSX from 'xlsx';
 import DBUtils from '@controller/mongodb'
+import { getDanhMuc } from "./danh_muc";
 
 const defaultSetting: ISettings = {
   fileName: "DefaultName", // Name of the resulting spreadsheet
@@ -48,7 +49,7 @@ function getMetaDataXLSX(xlsxBuffer: Buffer) {
   return data
 }
 
-async function previewXLSX({ xlsxBuffer, fileName }: any, configStr: string, skipRowNo: number = 0, previewNo: number = 10) {
+async function previewXLSX({ xlsxBuffer, fileName, database, cacheDanhMuc, configStr, skipRowNo = 0, previewNo = 10 }: any) {
   let rowToGet: number = Number(previewNo) + Number(skipRowNo) + 1;
   var workbook = XLSX.read(xlsxBuffer, { type: "buffer", sheetRows: rowToGet });
   let responseData: any = {};
@@ -60,7 +61,7 @@ async function previewXLSX({ xlsxBuffer, fileName }: any, configStr: string, ski
     responseData = err.message
   }
   if (config) {
-    let sheetData = await mapConfigSheet(workbook, config);
+    let sheetData = await mapConfigSheet(workbook, config, database, cacheDanhMuc);
     for (let collection in sheetData) {
       responseData[collection] = [];
       if (skipRowNo && Array.isArray(sheetData[collection])) {
@@ -75,7 +76,7 @@ async function previewXLSX({ xlsxBuffer, fileName }: any, configStr: string, ski
   return responseData;
 }
 
-async function processXLSX({ xlsxBuffer, fileName }: any, configStr: string, keyConfigStr: string, skipRowNo?: number) {
+async function processXLSX({ xlsxBuffer, fileName, database, cacheDanhMuc, configStr, keyConfigStr, skipRowNo }: any) {
   var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
   let responseData: any = {};
   var config, keyConfig;
@@ -87,7 +88,7 @@ async function processXLSX({ xlsxBuffer, fileName }: any, configStr: string, key
     responseData = err.message
   }
   if (config) {
-    let sheetData = await mapConfigSheet(workbook, config);
+    let sheetData = await mapConfigSheet(workbook, config, database, cacheDanhMuc);
     for (let collection in sheetData) {
       responseData[collection] = {
         upsertedCount: 0,
@@ -119,15 +120,42 @@ async function editCell(worksheet: XLSX.WorkSheet, cell: string, value: any) {
     [value]
   ], { origin: cell });
 }
-async function mapConfigSheet(worksheet: XLSX.WorkBook, config: any) {
+
+// 
+// mapping theo config
+// 
+async function mapConfigSheet(worksheet: XLSX.WorkBook, config: any, database: string, cacheDanhMuc: string = 'false') {
   let data: any = {};
+  let danhMucData: any = {};
   for (let sheet of worksheet.SheetNames) {
     if (config[sheet]) {
-      for (let col in config[sheet]) {
-        editCell(worksheet.Sheets[sheet], col + '1', config[sheet][col])
+      for (let column in config[sheet]) {
+        if (config[sheet][column].DanhMuc) {
+          danhMucData[config[sheet][column].DanhMuc] = await getDanhMuc(database, config[sheet][column], cacheDanhMuc);
+        }
+        if (config[sheet][column].Name) {
+          editCell(worksheet.Sheets[sheet], config[sheet][column] + '1', config[sheet][column].Name)
+        }
       }
     }
     data[sheet] = XLSX.utils.sheet_to_json(worksheet.Sheets[sheet]);
+    for (let [index,] of data[sheet].entries()) {
+      for (let column in config[sheet]) {
+        const danhMucKey = config[sheet][column].Name;
+        const collectionDanhMuc = config[sheet][column].DanhMuc;
+        const valueXlsx = data[sheet][index][danhMucKey];
+        if (danhMucData[collectionDanhMuc][valueXlsx]) {
+          data[sheet][index][danhMucKey] = danhMucData[collectionDanhMuc][valueXlsx]
+        }
+        else {
+          data[sheet][index][danhMucKey] = {
+            _source: {
+              [config[sheet][column].KeySearch]: valueXlsx
+            }
+          }
+        }
+      }
+    }
   }
   return data
 }

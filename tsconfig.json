@@ -104,6 +104,9 @@
       "@config/*": [
         "config/*"
       ],
+      "@services/*": [
+        "services/*"
+      ],
     }
   },
   "include": [
