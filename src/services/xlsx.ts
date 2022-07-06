@@ -90,26 +90,21 @@ async function processXLSX({ xlsxBuffer, fileName, database, cacheDanhMuc, confi
   if (config) {
     let sheetData = await mapConfigSheet(workbook, config, database, cacheDanhMuc);
     for (let collection in sheetData) {
-      responseData[collection] = {
-        upsertedCount: 0,
-        matchedCount: 0
-      }
+      responseData[collection] = {}
       if (skipRowNo && Array.isArray(sheetData[collection])) {
         sheetData[collection].splice(0, skipRowNo)
       }
+      const bulkService = await DBUtils.bulkCreateOneIfNotExist(_client, {
+        dbName: database,
+        collectionName: collection
+      })
       for (let record of sheetData[collection]) {
         const dataToCreate = addMetadataImport(record, fileName);
-        let result = await DBUtils.createOneIfNotExits(_client, {
-          dbName: "CSDL_MT",
-          collectionName: collection,
-          filter: {
-            sourceRefId: record[keyConfig?.[collection]]
-          },
-          insertData: dataToCreate
-        })
-        responseData[collection].matchedCount += result.matchedCount;
-        responseData[collection].upsertedCount += result.upsertedCount;
+        await bulkService.bulkUpsertAdd({
+          sourceRefId: record[keyConfig?.[collection]]
+        }, dataToCreate);
       }
+      responseData[collection] = await bulkService.bulk.execute();
     }
   }
   return responseData;

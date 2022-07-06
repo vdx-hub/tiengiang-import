@@ -28,7 +28,6 @@ async function getDanhMuc(db: string, config: ImportConfig, renewDanhMuc: string
         projectFields[key] = 1
       }
     }
-    log(projectFields)
     let cursor = await _client.db(db).collection(config.DanhMuc).find().project(projectFields);
     while (await cursor.hasNext()) {
       let doc: any = await cursor.next();
