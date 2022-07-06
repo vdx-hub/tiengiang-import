@@ -54,7 +54,18 @@ async function findOneById(client: MongoClient, { dbName, collectionName, filter
     .collection(collectionName)
     .findOne({ _id: new ObjectId(filterId) });
 }
-async function createOneIfNotExits(client: MongoClient, { dbName, collectionName, filter, insertData }: { dbName: string; collectionName: string; filter: object; insertData: object }) {
+async function createOneIfNotExist(client: MongoClient, { dbName, collectionName, filter, insertData }: { dbName: string; collectionName: string; filter: object; insertData: object }) {
   return await client.db(dbName).collection(collectionName).updateOne(filter, { $setOnInsert: addMetadataCreate(insertData) }, { upsert: true });
 }
-export default { createOne, deleteOne, updateById, updateOne, findOne, updateMany, findOneById, createOneIfNotExits, findMany };
+
+
+async function bulkCreateOneIfNotExist(client: MongoClient, { dbName, collectionName }: { dbName: string; collectionName: string; }) {
+  var bulk = client.db(dbName).collection(collectionName).initializeUnorderedBulkOp();
+  var bulkUpsertAdd = async (filter: object, insertData: object) => {
+    bulk.find(filter).upsert().update({ $setOnInsert: addMetadataCreate(insertData) })
+  }
+  return { bulk, bulkUpsertAdd }
+}
+
+
+export default { createOne, deleteOne, updateById, updateOne, findOne, updateMany, findOneById, createOneIfNotExist, findMany, bulkCreateOneIfNotExist };

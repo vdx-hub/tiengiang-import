@@ -1,8 +1,8 @@
 import express from 'express';
 const router = express.Router();
-import { join2Table, queryTable } from '@controller/tiengiang';
-import { createXLSX } from '@controller/xlsx';
-import { configLoad } from '@config/xlsxExport';
+import { join2Table, queryTable } from '@controller/mssql';
+import { createXLSX } from '@services/xlsx';
+import { configLoad } from '@config/xlsx_export';
 import { IJsonSheet } from 'json-as-xlsx';
 
 router.get('/pingTG', async function (_req, res) {
