@@ -129,7 +129,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, config: any, database: s
           danhMucData[config[sheet][column].DanhMuc] = await getDanhMuc(database, config[sheet][column], cacheDanhMuc);
         }
         if (config[sheet][column].Name) {
-          editCell(worksheet.Sheets[sheet], config[sheet][column] + '1', config[sheet][column].Name)
+          editCell(worksheet.Sheets[sheet], column + '1', config[sheet][column].Name)
         }
       }
     }
