@@ -163,6 +163,16 @@ function addMetadataImport(record: any, fileName: string) {
   data['order'] = 0;
   data['site'] = 'csdl_mt';
   data['storage'] = 'regular';
+  data["accessRoles"] = [
+    {
+      "shortName": "admin",
+      "permission": "2"
+    },
+    {
+      "shortName": "AdminData",
+      "permission": "2"
+    }
+  ]
   return data;
 }
 
