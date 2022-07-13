@@ -54,7 +54,7 @@ router.post('/getXlsx/:tableName1/:tableName2', async function (req, res) {
     if (data?.data) {
       xlsxData[0].content = data.data
     }
-    const buffer = createXLSX(xlsxData, {
+    const buffer = await createXLSX(xlsxData, {
       fileName: 'abc',
       extraLength: req.body.extraLength
     });
@@ -82,7 +82,7 @@ router.post('/getXlsx/:tableName', async function (req, res) {
     if (data?.data) {
       xlsxData[0].content = data.data
     }
-    const buffer = createXLSX(xlsxData, {
+    const buffer = await createXLSX(xlsxData, {
       fileName: 'abc',
       extraLength: req.body.extraLength || 3
     });

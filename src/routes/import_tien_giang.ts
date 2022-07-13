@@ -1,3 +1,4 @@
+import { blindProcessXLSX } from '@services/import';
 import { processXLSX, getMetaDataXLSX, previewXLSX } from '@services/xlsx';
 import express from 'express';
 import multer from 'multer';
@@ -43,6 +44,15 @@ router.post('/importXlsx/:database/confirmed', upload.single('file'), async func
 router.post('/importXlsx/getMetadata', upload.single('file'), async function (req, res) {
   if (req.file) {
     const metadata = await getMetaDataXLSX(req.file?.buffer)
+    res.status(200).send(metadata)
+  }
+  else {
+    res.status(400).send('File not found');
+  }
+})
+router.post('/importXlsx/v2', upload.single('file'), async function (req, res) {
+  if (req.file) {
+    const metadata = await blindProcessXLSX(req.file?.buffer)
     res.status(200).send(metadata)
   }
   else {
