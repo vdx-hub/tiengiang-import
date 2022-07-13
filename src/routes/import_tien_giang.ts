@@ -52,7 +52,7 @@ router.post('/importXlsx/getMetadata', upload.single('file'), async function (re
 })
 router.post('/importXlsx/v2/:database/confirm', upload.single('file'), async function (req, res) {
   if (req.file) {
-    const metadata = await blindProcessXLSX(req.file?.buffer, req.body.cacheDanhMuc, req.params.database)
+    const metadata = await blindProcessXLSX(req.file?.buffer, req.body.cacheDanhMuc, req.params.database, req.file.originalname)
     res.status(200).send(metadata)
   }
   else {

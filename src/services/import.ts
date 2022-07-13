@@ -1,16 +1,20 @@
 import XLSX, { WorkSheet } from 'xlsx';
 import { getDanhMuc } from './danh_muc';
+import DBUtils from '@controller/mongodb'
+import { _client } from "@db/mongodb";
+
 // import { getDanhMuc } from './danh_muc';
 
-async function blindProcessXLSX(xlsxBuffer: any, cacheDanhMuc: string = 'false', database: string) {
+async function blindProcessXLSX(xlsxBuffer: any, cacheDanhMuc: string = 'false', database: string, fileName: string) {
   var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
-  let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database);
+  let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database, fileName);
 
 
   return sheetData;
 }
 
-async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string) {
+async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string, fileName: string) {
+  const responseData: any = {}
   const _Sdata: any = {}
   const _Tdata: any = {}
   for (let sheet of worksheet.SheetNames.sort()) {
@@ -34,9 +38,17 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
       // build T_
       _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database);
       if (_Tdata[sheet]) {
+        const bulkService = await DBUtils.bulkCreateOneIfNotExist(_client, {
+          dbName: database,
+          collectionName: sheet
+        })
         for (let record of _Tdata[sheet]) {
-          record
+          const dataToCreate = addMetadataImport(record, fileName);
+          await bulkService.bulkUpsertAdd({
+            sourceRefId: dataToCreate['sourceRef'] + "___" + record[Object.keys(record)[0]]
+          }, dataToCreate);
         }
+        responseData[sheet] = await bulkService.bulk.execute();
       }
     }
 
@@ -58,7 +70,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
     //   }
     // }
   }
-  return _Tdata
+  return responseData
 }
 function groupBy(xs: any[], key: string) {
   return xs.reduce((rv, x) => {
@@ -246,6 +258,27 @@ async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: str
   }
   // log(sheetData)
   return sheetData;
+}
+
+function addMetadataImport(record: any, fileName: string) {
+  let data = record;
+  data['sourceRef'] = `ImportXlsx_${fileName}`;
+  data['username'] = `ImportSevice`;
+  data['openAccess'] = 0;
+  data['order'] = 0;
+  data['site'] = 'csdl_mt';
+  data['storage'] = 'regular';
+  data["accessRoles"] = [
+    {
+      "shortName": "admin",
+      "permission": "2"
+    },
+    {
+      "shortName": "AdminData",
+      "permission": "2"
+    }
+  ]
+  return data;
 }
 
 export { blindProcessXLSX }
