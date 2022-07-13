@@ -37,7 +37,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
     if (sheet.startsWith("T_")) {
       // build T_
       _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database);
-      if (_Tdata[sheet]) {
+      if (Array.isArray(_Tdata[sheet])) {
         const bulkService = await DBUtils.bulkCreateOneIfNotExist(_client, {
           dbName: database,
           collectionName: sheet
@@ -49,6 +49,9 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
           }, dataToCreate);
         }
         responseData[sheet] = await bulkService.bulk.execute();
+      }
+      else {
+        responseData.err = _Tdata[sheet];
       }
     }
 
