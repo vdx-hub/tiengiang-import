@@ -1,6 +1,6 @@
 import { log } from 'console';
 import XLSX, { WorkSheet } from 'xlsx';
-import { getDanhMuc } from './danh_muc';
+// import { getDanhMuc } from './danh_muc';
 
 async function blindProcessXLSX(xlsxBuffer: any) {
   var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
@@ -11,7 +11,6 @@ async function blindProcessXLSX(xlsxBuffer: any) {
 }
 
 async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false') {
-  let data: any = {};
   const _Sdata: any = {}
   const _Tdata: any = {}
   for (let sheet of worksheet.SheetNames.sort()) {
@@ -163,9 +162,9 @@ function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: string) {
           delete sheetData[index][col];
         }
       }
-
     }
   }
+  cacheDanhMuc
   return sheetData;
 }
 
