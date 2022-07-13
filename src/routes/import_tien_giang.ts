@@ -50,9 +50,9 @@ router.post('/importXlsx/getMetadata', upload.single('file'), async function (re
     res.status(400).send('File not found');
   }
 })
-router.post('/importXlsx/v2', upload.single('file'), async function (req, res) {
+router.post('/importXlsx/v2/:database/confirm', upload.single('file'), async function (req, res) {
   if (req.file) {
-    const metadata = await blindProcessXLSX(req.file?.buffer)
+    const metadata = await blindProcessXLSX(req.file?.buffer, req.body.cacheDanhMuc, req.params.database)
     res.status(200).send(metadata)
   }
   else {

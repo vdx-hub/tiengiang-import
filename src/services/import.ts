@@ -1,16 +1,16 @@
-import { log } from 'console';
 import XLSX, { WorkSheet } from 'xlsx';
+import { getDanhMuc } from './danh_muc';
 // import { getDanhMuc } from './danh_muc';
 
-async function blindProcessXLSX(xlsxBuffer: any) {
+async function blindProcessXLSX(xlsxBuffer: any, cacheDanhMuc: string = 'false', database: string) {
   var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
-  let sheetData = await mapConfigSheet(workbook, "false");
+  let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database);
 
 
   return sheetData;
 }
 
-async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false') {
+async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string) {
   const _Sdata: any = {}
   const _Tdata: any = {}
   for (let sheet of worksheet.SheetNames.sort()) {
@@ -26,10 +26,18 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
       _Sdata[sheet] = buildS_Data(worksheet.Sheets[sheet]);
       continue;
     }
+    if (sheet == "T_TepDuLieu") {
+      continue;
+    }
 
     if (sheet.startsWith("T_")) {
       // build T_
-      _Tdata[sheet] = buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc)
+      _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database);
+      if (_Tdata[sheet]) {
+        for (let record of _Tdata[sheet]) {
+          record
+        }
+      }
     }
 
     // for (let [index,] of data[sheet].entries()) {
@@ -73,33 +81,37 @@ function getHeaderRow(worksheet: any) {
 function buildS_Data(worksheet: any) {
   const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
   for (let index in sheetData) {
-    for (let field in sheetData[index]) {
-      if (field.startsWith("!")) {
+    for (let colName in sheetData[index]) {
+      if (colName.startsWith("!")) {
         //Ignore column
-        delete sheetData[index][field];
+        delete sheetData[index][colName];
         continue;
       }
     }
   }
   return groupBy(sheetData, getHeaderRow(worksheet)[0])
 }
-function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: string) {
+async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: string, database: string) {
   const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
+  const danhMucData: any = {};
+  sheetData.splice(0, 1);
+
   for (let index in sheetData) {
+
     //sheetData[index] : 1 rowData
-    for (let col in sheetData[index]) {
+    for (let colName in sheetData[index]) {
       //
       // Case 1. Tên cột: "!..." => bỏ cả cột
       // 
-      if (col.startsWith("!")) {
+      if (colName.startsWith("!")) {
         //Ignore column
-        delete sheetData[index][col];
+        delete sheetData[index][colName];
         continue;
       }
 
-      if (col.indexOf("___") > -1) {
+      if (colName.indexOf("___") > -1) {
         // idTest*___S_ABC|S_XYZ(AAA)
-        let [key, ...listConfig] = col.split("___");
+        let [key, ...listConfig] = colName.split("___");
 
         if (key.endsWith("*")) {
           //
@@ -122,7 +134,7 @@ function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: string) {
                 keyToSave = config.replace("S_", ""); // ABC
               }
               if (arrData[_SDataToGet]) {
-                sheetData[index][keyToSave] = arrData[_SDataToGet][sheetData[index][col]];
+                sheetData[index][keyToSave] = arrData[_SDataToGet][sheetData[index][colName]];
               }
             }
           }
@@ -138,33 +150,101 @@ function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: string) {
               keyToSave = listConfig[0].replace("S_", ""); // ABC
             }
             if (arrData[_SDataToGet]) {
-              sheetData[index][keyToSave] = arrData[_SDataToGet][sheetData[index][col]];
+              sheetData[index][keyToSave] = arrData[_SDataToGet][sheetData[index][colName]];
             }
           }
           // clean up
-          delete sheetData[index][col];
+          delete sheetData[index][colName];
         }
         else if (key.endsWith("[]")) {
-          log(listConfig)
-          // TODO
+          let keyToSave = key.replace("[]", "");
+          let [danhMuc, keySearch, keyToADD] = listConfig;
+
+          //default value if not exist
+          keySearch = keySearch || "TenMuc";
+          keyToADD = keyToADD || "MaMuc";
+          let config = {
+            DanhMuc: danhMuc,
+            KeySearch: keySearch,
+            Fields: (keyToADD || "MaMuc").split("|"),
+          }
+          danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
+          if (danhMucData[danhMuc]) {
+            let lstValue = sheetData[index][colName].split("||");
+            let finalValue = [];
+            for (let val of lstValue) {
+              if (danhMucData[danhMuc][val]) {
+                finalValue.push(danhMucData[danhMuc][val])
+              }
+              else {
+                finalValue.push({
+                  _source: {
+                    [keySearch]: val
+                  }
+                })
+              }
+            }
+            sheetData[index][keyToSave] = finalValue;
+          }
+          else {
+            return {
+              status: "error",
+              msg: `${danhMuc} not found!`
+            }
+          }
+          delete sheetData[index][colName];
           // Danh mục nhiều dữ liệu tên cột key[] dữ liệu phân cách bởi ||
           // 3. ${Tên field}___${Tên danh mục}___${Key để tìm của danh mục}___${Key kèm theo phân cách bằng '|' }
           //   Mặc định MaMuc TenMuc có thể bỏ trống ${Tên field}___${Tên danh mục}
           // danhMucData[config[sheet][column].DanhMuc] = await getDanhMuc(database, config[sheet][column], cacheDanhMuc);
-
+        }
+        else {
+          // 3. ${Tên field}___${Tên danh mục}___${Key để tìm của danh mục}___${Key kèm theo phân cách bằng '|' }
+          //   Mặc định MaMuc TenMuc có thể bỏ trống ${Tên field}___${Tên danh mục}
+          // danhMucData[config[sheet][column].DanhMuc] = await getDanhMuc(database, config[sheet][column], cacheDanhMuc);
+          let keyToSave = key.replace("[]", "");
+          let [danhMuc, keySearch, keyToADD] = listConfig;
+          //default value if not exist
+          keySearch = keySearch || "TenMuc";
+          keyToADD = keyToADD || "MaMuc";
+          let config = {
+            DanhMuc: danhMuc,
+            KeySearch: keySearch,
+            Fields: (keyToADD || "MaMuc").split("|"),
+          }
+          danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
+          if (danhMucData[danhMuc]) {
+            if (danhMucData[danhMuc][sheetData[index][colName]]) {
+              sheetData[index][keyToSave] = danhMucData[danhMuc][sheetData[index][colName]]
+            }
+            else {
+              sheetData[index][keyToSave] = {
+                _source: {
+                  [keySearch]: sheetData[index][colName]
+                }
+              }
+            }
+            delete sheetData[index][colName];
+          }
+          else {
+            return {
+              status: "error",
+              msg: `${danhMuc} not found!`
+            }
+          }
         }
       }
       else {
         // normal key text
-        if (col.endsWith("[]")) {
-          let keyToSave = col.replace("[]", "");
-          sheetData[index][keyToSave] = sheetData[index][col].split("||");
-          delete sheetData[index][col];
+        if (colName.endsWith("[]")) {
+          let keyToSave = colName.replace("[]", "");
+          sheetData[index][keyToSave] = sheetData[index][colName].split("||");
+          delete sheetData[index][colName];
         }
       }
     }
   }
-  cacheDanhMuc
+  // log(sheetData)
   return sheetData;
 }
 
