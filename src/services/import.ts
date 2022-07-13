@@ -2,6 +2,7 @@ import XLSX, { WorkSheet } from 'xlsx';
 import { getDanhMuc } from './danh_muc';
 import DBUtils from '@controller/mongodb'
 import { _client } from "@db/mongodb";
+import { log } from 'console';
 
 // import { getDanhMuc } from './danh_muc';
 
@@ -45,7 +46,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
         for (let record of _Tdata[sheet]) {
           const dataToCreate = addMetadataImport(record, fileName);
           await bulkService.bulkUpsertAdd({
-            sourceRefId: dataToCreate['sourceRef'] + "___" + record[Object.keys(record)[0]]
+            sourceRefId: dataToCreate['sourceRef'] + "___" + record[findFirstColumnKey(getHeaderRow(worksheet.Sheets[sheet])[0]) || Object.keys(record)[0]]
           }, dataToCreate);
         }
         responseData[sheet] = await bulkService.bulk.execute();
@@ -81,7 +82,7 @@ function groupBy(xs: any[], key: string) {
     return rv;
   }, {});
 };
-function getHeaderRow(worksheet: any) {
+function getHeaderRow(worksheet: any): string[] {
   let headers = [];
   var range = XLSX.utils.decode_range(worksheet['!ref'] || '');
   var C = range.s.c;
@@ -136,6 +137,7 @@ async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: str
           //   - Mặc định cột đầu trong các sheet con dùng để so sánh với cột fieldToCheck ở sheet cha
           //   - keyToSave: tên trường lưu thành mảng ở object sheet cha. Nếu không có sẽ lấy sheetName bỏ "S_". VD: S_HanNgachXaThai => HanNgachXaThai.
           // 
+          sheetData[index][key.replace("*", "")] = sheetData[index][colName];
           if (listConfig[0].indexOf("|")) {
             for (let config of listConfig[0].split("|")) {
               let _SDataToGet = config; // S_ABC(XYZ)
@@ -259,7 +261,7 @@ async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: str
       }
     }
   }
-  // log(sheetData)
+  // loglog(sheetData)
   return sheetData;
 }
 
@@ -283,5 +285,8 @@ function addMetadataImport(record: any, fileName: string) {
   ]
   return data;
 }
-
+function findFirstColumnKey(columnName: string | undefined) {
+  const regx = new RegExp(/^\w+/gi);
+  return columnName?.match(regx)?.[0];
+}
 export { blindProcessXLSX }
