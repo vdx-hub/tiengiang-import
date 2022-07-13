@@ -2,7 +2,6 @@ import XLSX, { WorkSheet } from 'xlsx';
 import { getDanhMuc } from './danh_muc';
 import DBUtils from '@controller/mongodb'
 import { _client } from "@db/mongodb";
-import { log } from 'console';
 
 // import { getDanhMuc } from './danh_muc';
 
