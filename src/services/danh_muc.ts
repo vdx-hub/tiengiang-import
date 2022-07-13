@@ -45,7 +45,5 @@ async function getDanhMuc(db: string, config: ImportConfig, renewDanhMuc: string
     }
     return danhMuc;
   }
-
-
 }
 export { getDanhMuc }
