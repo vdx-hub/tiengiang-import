@@ -33,7 +33,6 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
     if (sheet == "T_TepDuLieu") {
       continue;
     }
-
     if (sheet.startsWith("T_")) {
       // build T_
       _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database);
@@ -95,6 +94,7 @@ function getHeaderRow(worksheet: any): string[] {
 }
 async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: string) {
   const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
+  sheetData.splice(0, 1);
   const danhMucData: any = {};
   for (let index in sheetData) {
     for (let colName in sheetData[index]) {
