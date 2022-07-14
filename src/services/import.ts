@@ -27,7 +27,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
 
     if (sheet.startsWith("S_")) {
       // Build S_
-      _Sdata[sheet] = buildS_Data(worksheet.Sheets[sheet]);
+      _Sdata[sheet] = await buildS_Data(worksheet.Sheets[sheet], cacheDanhMuc, database);
       continue;
     }
     if (sheet == "T_TepDuLieu") {
@@ -93,14 +93,96 @@ function getHeaderRow(worksheet: any): string[] {
   }
   return headers;
 }
-function buildS_Data(worksheet: any) {
+async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: string) {
   const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
+  const danhMucData: any = {};
   for (let index in sheetData) {
     for (let colName in sheetData[index]) {
       if (colName.startsWith("!")) {
         //Ignore column
         delete sheetData[index][colName];
         continue;
+      }
+      if (colName.indexOf("___") > -1) {
+        let [key, ...listConfig] = colName.split("___");
+        if (key.endsWith("[]")) {
+          let keyToSave = key.replace("[]", "");
+          let [danhMuc, keySearch, keyToADD] = listConfig;
+
+          //default value if not exist
+          keySearch = keySearch || "TenMuc";
+          keyToADD = keyToADD || "MaMuc";
+          let config = {
+            DanhMuc: danhMuc,
+            KeySearch: keySearch,
+            Fields: (keyToADD || "MaMuc").split("|"),
+          }
+          danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
+          if (danhMucData[danhMuc]) {
+            let lstValue = sheetData[index][colName].split("||");
+            let finalValue = [];
+            for (let val of lstValue) {
+              if (danhMucData[danhMuc][val]) {
+                finalValue.push(danhMucData[danhMuc][val])
+              }
+              else {
+                finalValue.push({
+                  _source: {
+                    [keySearch]: val
+                  }
+                })
+              }
+            }
+            sheetData[index][keyToSave] = finalValue;
+          }
+          else {
+            return {
+              status: "error",
+              msg: `${danhMuc} not found!`
+            }
+          }
+          delete sheetData[index][colName];
+          // Danh mục nhiều dữ liệu tên cột key[] dữ liệu phân cách bởi ||
+          // 3. ${Tên field}___${Tên danh mục}___${Key để tìm của danh mục}___${Key kèm theo phân cách bằng '|' }
+          //   Mặc định MaMuc TenMuc có thể bỏ trống ${Tên field}___${Tên danh mục}
+          // danhMucData[config[sheet][column].DanhMuc] = await getDanhMuc(database, config[sheet][column], cacheDanhMuc);
+        }
+        else {
+          // 3. ${Tên field}___${Tên danh mục}___${Key để tìm của danh mục}___${Key kèm theo phân cách bằng '|' }
+          //   Mặc định MaMuc TenMuc có thể bỏ trống ${Tên field}___${Tên danh mục}
+          // danhMucData[config[sheet][column].DanhMuc] = await getDanhMuc(database, config[sheet][column], cacheDanhMuc);
+          let keyToSave = key.replace("[]", "");
+          let [danhMuc, keySearch, keyToADD] = listConfig;
+          //default value if not exist
+          keySearch = keySearch || "TenMuc";
+          keyToADD = keyToADD || "MaMuc";
+          let config = {
+            DanhMuc: danhMuc,
+            KeySearch: keySearch,
+            Fields: (keyToADD || "MaMuc").split("|"),
+          }
+          danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
+          if (danhMucData[danhMuc]) {
+            if (danhMucData[danhMuc][sheetData[index][colName]]) {
+              sheetData[index][keyToSave] = danhMucData[danhMuc][sheetData[index][colName]]
+            }
+            else {
+              sheetData[index][keyToSave] = {
+                _source: {
+                  [keySearch]: sheetData[index][colName]
+                }
+              }
+            }
+            delete sheetData[index][colName];
+          }
+          else {
+            return {
+              status: "error",
+              msg: `${danhMuc} not found!`
+            }
+          }
+        }
+
       }
     }
   }
