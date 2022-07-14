@@ -2,6 +2,7 @@ import XLSX, { WorkSheet } from 'xlsx';
 import { getDanhMuc } from './danh_muc';
 import DBUtils from '@controller/mongodb'
 import { _client } from "@db/mongodb";
+import { object as convertToObject } from 'dot-object'
 
 // import { getDanhMuc } from './danh_muc';
 
@@ -185,6 +186,7 @@ async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: strin
 
       }
     }
+    sheetData[index] = convertToObject(sheetData[index])
   }
   return groupBy(sheetData, getHeaderRow(worksheet)[0])
 }
@@ -342,7 +344,6 @@ async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: str
       }
     }
   }
-  // loglog(sheetData)
   return sheetData;
 }
 
