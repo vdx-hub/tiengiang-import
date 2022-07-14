@@ -32,7 +32,7 @@ async function getDanhMuc(db: string, config: ImportConfig, cacheDanhMuc: string
       const { _id, ...key } = doc;
       danhMuc[doc[config.KeySearch]] = {
         source: key,
-        _id: _id
+        _id: String(_id)
       };
     }
     try {
