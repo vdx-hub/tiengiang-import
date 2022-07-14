@@ -274,12 +274,12 @@ async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: str
             let finalValue = [];
             for (let val of lstValue) {
               if (danhMucData[danhMuc][val]) {
-                finalValue.push(danhMucData[danhMuc][val])
+                finalValue.push(danhMucData[danhMuc][val.trim()])
               }
               else {
                 finalValue.push({
                   _source: {
-                    [keySearch]: val
+                    [keySearch]: val.trim()
                   }
                 })
               }
@@ -315,12 +315,12 @@ async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: str
           danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
           if (danhMucData[danhMuc]) {
             if (danhMucData[danhMuc][sheetData[index][colName]]) {
-              sheetData[index][keyToSave] = danhMucData[danhMuc][sheetData[index][colName]]
+              sheetData[index][keyToSave] = danhMucData[danhMuc][sheetData[index][colName].trim()]
             }
             else {
               sheetData[index][keyToSave] = {
                 _source: {
-                  [keySearch]: sheetData[index][colName]
+                  [keySearch]: sheetData[index][colName].trim()
                 }
               }
             }
