@@ -16,7 +16,7 @@ async function getDanhMuc(db: string, config: ImportConfig, cacheDanhMuc: string
   }
   if (Object.entries(danhMuc).length > 0 && cacheDanhMuc == 'true') return danhMuc;
   // query
-  if (cacheDanhMuc == 'false') {
+  if (cacheDanhMuc == 'false' || Object.entries(danhMuc).length == 0) {
     danhMuc = {}
     let projectFields: any = {
       [config.KeySearch]: 1
