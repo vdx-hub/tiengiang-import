@@ -9,12 +9,15 @@ interface ImportConfig {
 
 async function getDanhMuc(db: string, config: ImportConfig, cacheDanhMuc: string) {
   let danhMuc: any = {};
-  try {
-    danhMuc = await fs.readJSON(`tmp/${db}___${config.DanhMuc}.json`)
+  if (config.DanhMuc.startsWith("C_")) {
+    try {
+      danhMuc = await fs.readJSON(`tmp/${db}___${config.DanhMuc}.json`)
+    }
+    catch (err) {
+    }
+    if (Object.entries(danhMuc).length > 0 && cacheDanhMuc == 'true') return danhMuc;
   }
-  catch (err) {
-  }
-  if (Object.entries(danhMuc).length > 0 && cacheDanhMuc == 'true') return danhMuc;
+
   // query
   if (cacheDanhMuc == 'false' || Object.entries(danhMuc).length == 0) {
     danhMuc = {}
