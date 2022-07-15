@@ -22,6 +22,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
   let _fileData: any = {};
   let lstSheet_S = worksheet.SheetNames.filter(x => x.startsWith("S_"));
   let lstSheet_T = worksheet.SheetNames.filter(x => x.startsWith("T_") && (x !== "T_TepDuLieu"));
+  let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_"));
   _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, fileDinhKem)
   // let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_")); ignore
   for (let sheet of lstSheet_S) {
@@ -29,7 +30,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
     _Sdata[sheet] = await buildS_Data(worksheet.Sheets[sheet], cacheDanhMuc, database);
   }
 
-  for (let sheet of lstSheet_T) {
+  for (let sheet of [...lstSheet_T, ...lstSheet_C]) {
     // build T_
     _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database, _fileData);
     if (Array.isArray(_Tdata[sheet])) {
@@ -39,11 +40,17 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
       })
       for (let record of _Tdata[sheet]) {
         const dataToCreate = addMetadataImport(record, fileName);
+        dataToCreate['type'] = sheet;
         await bulkService.bulkUpsertAdd({
           sourceRefId: dataToCreate['sourceRef'] + "___" + record[findFirstColumnKey(getHeaderRow(worksheet.Sheets[sheet])[0]) || Object.keys(record)[0]]
         }, dataToCreate);
       }
-      responseData[sheet] = await bulkService.bulk.execute();
+      try {
+        responseData[sheet] = await bulkService.bulk.execute();
+      }
+      catch (err: any) {
+        responseData[sheet] = err.message
+      }
     }
     else {
       responseData.err = _Tdata[sheet];
@@ -260,12 +267,12 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
             let finalValue = [];
             for (let val of lstValue) {
               if (danhMucData[danhMuc][val]) {
-                finalValue.push(danhMucData[danhMuc][val.trim()])
+                finalValue.push(danhMucData[danhMuc][val])
               }
               else {
                 finalValue.push({
                   _source: {
-                    [keySearch]: val.trim()
+                    [keySearch]: val
                   }
                 })
               }
@@ -301,12 +308,12 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
           danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
           if (danhMucData[danhMuc]) {
             if (danhMucData[danhMuc][sheetData[index][colName]]) {
-              sheetData[index][keyToSave] = danhMucData[danhMuc][sheetData[index][colName].trim()]
+              sheetData[index][keyToSave] = danhMucData[danhMuc][sheetData[index][colName]]
             }
             else {
               sheetData[index][keyToSave] = {
                 _source: {
-                  [keySearch]: sheetData[index][colName].trim()
+                  [keySearch]: sheetData[index][colName]
                 }
               }
             }
@@ -342,7 +349,7 @@ async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: 
     sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index]['IDVanBanDTM']}___${sheetData[index]['fileName']}`;
     for (let fileExpress of fileDinhKem) {
       if (fileExpress.originalname == sheetData[index].fileName) {
-        let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, database, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
+        let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
         if (fileUploaded) {
           sheetData[index]['uploadData'] = {
             "bucketName": "T_TepDuLieu",
