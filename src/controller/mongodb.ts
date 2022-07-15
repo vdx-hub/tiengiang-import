@@ -69,8 +69,8 @@ async function bulkCreateOneIfNotExist(client: MongoClient, { dbName, collection
   return { bulk, bulkUpsertAdd }
 }
 
-async function uploadExpressFile(client: MongoClient, bucket: string, fileName: string, file: Express.Multer.File) {
-  const gridfs = new GridFSBucket(client.db("oauth2"), {
+async function uploadExpressFile(client: MongoClient, database: string, bucket: string, fileName: string, file: Express.Multer.File) {
+  const gridfs = new GridFSBucket(client.db(database), {
     bucketName: bucket
   })
   let fileUpload;
