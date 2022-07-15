@@ -1,7 +1,7 @@
 import XLSX, { WorkSheet } from 'xlsx';
 import { getDanhMuc } from './danh_muc';
 import DBUtils from '@controller/mongodb'
-import { _client } from "@db/mongodb";
+import { _client, _clientGridFS } from "@db/mongodb";
 import { object as convertToObject } from 'dot-object'
 import { readFile } from 'fs-extra';
 
@@ -342,7 +342,7 @@ async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: 
     sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index]['IDVanBanDTM']}___${sheetData[index]['fileName']}`;
     for (let fileExpress of fileDinhKem) {
       if (fileExpress.originalname == sheetData[index].fileName) {
-        let fileUploaded = await DBUtils.uploadExpressFile(_client, database, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
+        let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, database, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
         if (fileUploaded) {
           sheetData[index]['uploadData'] = {
             "bucketName": "T_TepDuLieu",
