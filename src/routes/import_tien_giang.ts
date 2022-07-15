@@ -56,9 +56,14 @@ router.post('/importXlsx/:database/confirmed', upload.single('file'), async func
   }
 })
 
-router.post('/importXlsx/getMetadata', upload.single('file'), async function (req, res) {
-  if (req.file) {
-    const metadata = await getMetaDataXLSX(req.file?.buffer)
+router.post('/importXlsx/getMetadata', upload.fields([{
+  name: 'file', maxCount: 1
+}, {
+  name: 'tepdinhkem', maxCount: 100
+}]), async function (req, res) {
+  if (req.files) {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const metadata = await getMetaDataXLSX(files)
     res.status(200).send(metadata)
   }
   else {

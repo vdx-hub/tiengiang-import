@@ -3,6 +3,7 @@ import jsonxlsx, { IJsonSheet, ISettings } from "json-as-xlsx"
 import XLSX from 'xlsx';
 import DBUtils from '@controller/mongodb'
 import { getDanhMuc } from "./danh_muc";
+import { readFile } from "fs-extra";
 
 const defaultSetting: ISettings = {
   fileName: "DefaultName", // Name of the resulting spreadsheet
@@ -24,7 +25,8 @@ async function createXLSX(data: IJsonSheet[], settings = defaultSetting) {
 // 
 
 // First row get
-function getMetaDataXLSX(xlsxBuffer: Buffer) {
+async function getMetaDataXLSX(files: { [fieldname: string]: Express.Multer.File[] }) {
+  let xlsxBuffer = await readFile(files.file[0].path)
   var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
   let data: any = {};
 
