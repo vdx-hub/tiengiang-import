@@ -342,7 +342,7 @@ async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: 
     sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index]['IDVanBanDTM']}___${sheetData[index]['fileName']}`;
     for (let fileExpress of fileDinhKem) {
       if (fileExpress.originalname == sheetData[index].fileName) {
-        let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, database, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
+        let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
         if (fileUploaded) {
           sheetData[index]['uploadData'] = {
             "bucketName": "T_TepDuLieu",
