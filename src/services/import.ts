@@ -3,75 +3,51 @@ import { getDanhMuc } from './danh_muc';
 import DBUtils from '@controller/mongodb'
 import { _client } from "@db/mongodb";
 import { object as convertToObject } from 'dot-object'
+import { readFile } from 'fs-extra';
 
 // import { getDanhMuc } from './danh_muc';
 
-async function blindProcessXLSX(xlsxBuffer: any, cacheDanhMuc: string = 'false', database: string, fileName: string) {
+async function blindProcessXLSX(files: { [fieldname: string]: Express.Multer.File[] }, cacheDanhMuc: string = 'false', database: string) {
+  let xlsxBuffer = await readFile(files.file[0].path)
   var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
-  let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database, fileName);
-
+  let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database, files.file[0].originalname, files.tepdinhkem);
 
   return sheetData;
 }
 
-async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string, fileName: string) {
-  const responseData: any = {}
-  const _Sdata: any = {}
-  const _Tdata: any = {}
-  for (let sheet of worksheet.SheetNames.sort()) {
-    // sort sheet by name to get ordered list C_ >> S_ >> T_
+async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string, fileName: string, fileDinhKem?: Express.Multer.File[]) {
+  const responseData: any = {};
+  const _Sdata: any = {};
+  const _Tdata: any = {};
+  let _fileData: any = {};
+  let lstSheet_S = worksheet.SheetNames.filter(x => x.startsWith("S_"));
+  let lstSheet_T = worksheet.SheetNames.filter(x => x.startsWith("T_") && (x !== "T_TepDuLieu"));
+  _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, fileDinhKem)
+  // let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_")); ignore
+  for (let sheet of lstSheet_S) {
+    // Build S_
+    _Sdata[sheet] = await buildS_Data(worksheet.Sheets[sheet], cacheDanhMuc, database);
+  }
 
-    if (sheet.startsWith("C_")) {
-      // skip C_
-      continue;
-    }
-
-    if (sheet.startsWith("S_")) {
-      // Build S_
-      _Sdata[sheet] = await buildS_Data(worksheet.Sheets[sheet], cacheDanhMuc, database);
-      continue;
-    }
-    if (sheet == "T_TepDuLieu") {
-      continue;
-    }
-    if (sheet.startsWith("T_")) {
-      // build T_
-      _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database);
-      if (Array.isArray(_Tdata[sheet])) {
-        const bulkService = await DBUtils.bulkCreateOneIfNotExist(_client, {
-          dbName: database,
-          collectionName: sheet
-        })
-        for (let record of _Tdata[sheet]) {
-          const dataToCreate = addMetadataImport(record, fileName);
-          await bulkService.bulkUpsertAdd({
-            sourceRefId: dataToCreate['sourceRef'] + "___" + record[findFirstColumnKey(getHeaderRow(worksheet.Sheets[sheet])[0]) || Object.keys(record)[0]]
-          }, dataToCreate);
-        }
-        responseData[sheet] = await bulkService.bulk.execute();
+  for (let sheet of lstSheet_T) {
+    // build T_
+    _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database, _fileData);
+    if (Array.isArray(_Tdata[sheet])) {
+      const bulkService = await DBUtils.bulkCreateOneIfNotExist(_client, {
+        dbName: database,
+        collectionName: sheet
+      })
+      for (let record of _Tdata[sheet]) {
+        const dataToCreate = addMetadataImport(record, fileName);
+        await bulkService.bulkUpsertAdd({
+          sourceRefId: dataToCreate['sourceRef'] + "___" + record[findFirstColumnKey(getHeaderRow(worksheet.Sheets[sheet])[0]) || Object.keys(record)[0]]
+        }, dataToCreate);
       }
-      else {
-        responseData.err = _Tdata[sheet];
-      }
+      responseData[sheet] = await bulkService.bulk.execute();
     }
-
-    // for (let [index,] of data[sheet].entries()) {
-    //   for (let column in config[sheet]) {
-    //     const danhMucKey = config[sheet][column].Name;
-    //     const collectionDanhMuc = config[sheet][column].DanhMuc;
-    //     const valueXlsx = data[sheet][index][danhMucKey];
-    //     if (danhMucData[collectionDanhMuc][valueXlsx]) {
-    //       data[sheet][index][danhMucKey] = danhMucData[collectionDanhMuc][valueXlsx]
-    //     }
-    //     else {
-    //       data[sheet][index][danhMucKey] = {
-    //         _source: {
-    //           [config[sheet][column].KeySearch]: valueXlsx
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
+    else {
+      responseData.err = _Tdata[sheet];
+    }
   }
   return responseData
 }
@@ -190,7 +166,7 @@ async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: strin
   }
   return groupBy(sheetData, getHeaderRow(worksheet)[0])
 }
-async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: string, database: string) {
+async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: string, database: string, _fileData: any) {
   const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
   const danhMucData: any = {};
   sheetData.splice(0, 1);
@@ -223,34 +199,44 @@ async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: str
           sheetData[index][key.replace("*", "")] = sheetData[index][colName];
           if (listConfig[0].indexOf("|")) {
             for (let config of listConfig[0].split("|")) {
-              let _SDataToGet = config; // S_ABC(XYZ)
+              let prebuildDataToGet = config; // S_ABC(XYZ)
               let keyToSave = key.replace("*", "");
               if (config.indexOf("(") > -1) {
                 const filter = new RegExp(/(.+?)\((.+?)\)/gi);
-                _SDataToGet = config.replace(filter, "$1"); // S_ABC
+                prebuildDataToGet = config.replace(filter, "$1"); // S_ABC
                 keyToSave = config.replace(filter, "$2"); // XYZ
               }
               else {
                 keyToSave = config.replace("S_", ""); // ABC
               }
-              if (arrData[_SDataToGet]) {
-                sheetData[index][keyToSave] = arrData[_SDataToGet][sheetData[index][colName]];
+              if (prebuildDataToGet === "T_TepDuLieu") {
+                if (_fileData) {
+                  sheetData[index][keyToSave] = _fileData[sheetData[index][colName]];
+                }
+              }
+              else if (_Sdata[prebuildDataToGet]) {
+                sheetData[index][keyToSave] = _Sdata[prebuildDataToGet][sheetData[index][colName]];
               }
             }
           }
           else {
-            let _SDataToGet = listConfig[0]; // S_ABC(XYZ)
+            let prebuildDataToGet = listConfig[0]; // S_ABC(XYZ)
             let keyToSave = key.replace("*", "");
             if (listConfig[0].indexOf("(") > -1) {
               const filter = new RegExp(/(.+?)\((.+?)\)/gi);
-              _SDataToGet = listConfig[0].replace(filter, "$1"); // S_ABC
+              prebuildDataToGet = listConfig[0].replace(filter, "$1"); // S_ABC
               keyToSave = listConfig[0].replace(filter, "$2"); // XYZ
             }
             else {
               keyToSave = listConfig[0].replace("S_", ""); // ABC
             }
-            if (arrData[_SDataToGet]) {
-              sheetData[index][keyToSave] = arrData[_SDataToGet][sheetData[index][colName]];
+            if (prebuildDataToGet === "T_TepDuLieu") {
+              if (_fileData) {
+                sheetData[index][keyToSave] = _fileData[sheetData[index][colName]];
+              }
+            }
+            else if (_Sdata[prebuildDataToGet]) {
+              sheetData[index][keyToSave] = _Sdata[prebuildDataToGet][sheetData[index][colName]];
             }
           }
           // clean up
@@ -345,6 +331,46 @@ async function buildT_Data(worksheet: WorkSheet, arrData: any, cacheDanhMuc: str
     }
   }
   return sheetData;
+}
+
+async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: string, fileDinhKem?: Express.Multer.File[]) {
+  if (!fileDinhKem) return;
+  const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
+  sheetData.splice(0, 1);
+  for (let index in sheetData) {
+    sheetData[index]['fileName'] = `${sheetData[index]['TenTep']}.${sheetData[index]['DinhDang']}`;
+    sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index]['IDVanBanDTM']}___${sheetData[index]['fileName']}`;
+    for (let fileExpress of fileDinhKem) {
+      if (fileExpress.originalname == sheetData[index].fileName) {
+        let fileUploaded = await DBUtils.uploadExpressFile(_client, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
+        if (fileUploaded) {
+          sheetData[index]['uploadData'] = {
+            "bucketName": "T_TepDuLieu",
+            "chunkSize": 102400,
+            "originalname": fileUploaded.filename,
+            "encoding": "7bit",
+            "filename": fileUploaded.filename,
+            "size": fileUploaded.chunkSizeBytes,
+            "uploadDate": new Date().toISOString(),
+            "id": String(fileUploaded.id),
+            "contentType": fileUploaded.options.contentType || "",
+          }
+        }
+        break;
+      }
+    }
+    const dataToCreate = addMetadataImport(JSON.parse(JSON.stringify(sheetData[index])), fileName);
+    let created = await DBUtils.createOneIfNotExist(_client, {
+      dbName: database,
+      collectionName: "T_TepDuLieu",
+      filter: {
+        sourceRefId: sheetData[index]['sourceRefId']
+      },
+      insertData: dataToCreate
+    })
+    sheetData[index]["idTepDuLieu"] = String(created.upsertedId);
+  }
+  return groupBy(sheetData, getHeaderRow(worksheet)[0]);
 }
 
 function addMetadataImport(record: any, fileName: string) {

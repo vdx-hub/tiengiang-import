@@ -1,4 +1,5 @@
-import { DeleteResult, InsertOneResult, UpdateResult, WithId, Document, ObjectId, MongoClient, FindCursor, FindOptions } from 'mongodb';
+import { createReadStream, pathExists } from 'fs-extra';
+import { DeleteResult, InsertOneResult, UpdateResult, WithId, Document, ObjectId, MongoClient, FindCursor, FindOptions, GridFSBucket } from 'mongodb';
 interface mongoCollectionInfo {
   dbName: string;
   collectionName: string;
@@ -63,9 +64,24 @@ async function bulkCreateOneIfNotExist(client: MongoClient, { dbName, collection
   var bulk = client.db(dbName).collection(collectionName).initializeUnorderedBulkOp();
   var bulkUpsertAdd = async (filter: object, insertData: object) => {
     bulk.find(filter).upsert().update({ $setOnInsert: addMetadataCreate(insertData) })
+
   }
   return { bulk, bulkUpsertAdd }
 }
 
+async function uploadExpressFile(client: MongoClient, bucket: string, fileName: string, file: Express.Multer.File) {
+  const gridfs = new GridFSBucket(client.db("oauth2"), {
+    bucketName: bucket
+  })
+  let fileUpload;
+  if (await pathExists(file.path)) {
+    fileUpload = createReadStream(file.path).pipe(gridfs.openUploadStream(fileName, {
+      chunkSizeBytes: 102400,
+      contentType: file.mimetype || "",
+      aliases: ["/upload/:bucket"],
+    }))
+  }
+  return fileUpload;
+}
 
-export default { createOne, deleteOne, updateById, updateOne, findOne, updateMany, findOneById, createOneIfNotExist, findMany, bulkCreateOneIfNotExist };
+export default { createOne, deleteOne, updateById, updateOne, findOne, updateMany, findOneById, createOneIfNotExist, findMany, bulkCreateOneIfNotExist, uploadExpressFile };

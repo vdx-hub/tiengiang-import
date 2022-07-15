@@ -2,7 +2,22 @@ import { blindProcessXLSX } from '@services/import';
 import { processXLSX, getMetaDataXLSX, previewXLSX } from '@services/xlsx';
 import express from 'express';
 import multer from 'multer';
-var upload = multer();
+import path from 'path';
+var upload = multer({
+  storage: multer.diskStorage({
+    destination: function (_req, file, cb) {
+      if (file.fieldname === "file") {
+        cb(null, './uploads/xlsx/')
+      }
+      else if (file.fieldname === "tepdinhkem") {
+        cb(null, './uploads/tepdinhkem/');
+      }
+    },
+    filename: function (_req, file, cb) {
+      cb(null, `${path.basename(file.originalname)}`);
+    },
+  }),
+});
 
 const router = express.Router();
 router.post('/importXlsx/:database/preview', upload.single('file'), async function (req, res) {
@@ -50,9 +65,14 @@ router.post('/importXlsx/getMetadata', upload.single('file'), async function (re
     res.status(400).send('File not found');
   }
 })
-router.post('/importXlsx/v2/:database/confirm', upload.single('file'), async function (req, res) {
-  if (req.file) {
-    const metadata = await blindProcessXLSX(req.file?.buffer, req.body.cacheDanhMuc, req.params.database, req.file.originalname)
+router.post('/importXlsx/v2/:database/confirm', upload.fields([{
+  name: 'file', maxCount: 1
+}, {
+  name: 'tepdinhkem', maxCount: 100
+}]), async function (req, res) {
+  if (req.files) {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const metadata = await blindProcessXLSX(files, req.body.cacheDanhMuc, req.params.database);
     res.status(200).send(metadata)
   }
   else {

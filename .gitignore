@@ -81,3 +81,7 @@ dist/
 
 # Shared
 shared/
+
+#upload
+uploads/xlsx/*
+uploads/tepdinhkem/*
