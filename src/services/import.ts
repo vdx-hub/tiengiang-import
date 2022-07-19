@@ -43,7 +43,12 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
           sourceRefId: dataToCreate['sourceRef'] + "___" + record[findFirstColumnKey(getHeaderRow(worksheet.Sheets[sheet])[0]) || Object.keys(record)[0]]
         }, dataToCreate);
       }
-      responseData[sheet] = await bulkService.bulk.execute();
+      try {
+        responseData[sheet] = await bulkService.bulk.execute();
+      }
+      catch (err: any) {
+        responseData[sheet] = err.message
+      }
     }
     else {
       responseData.err = _Tdata[sheet];
