@@ -22,6 +22,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
   let _fileData: any = {};
   let lstSheet_S = worksheet.SheetNames.filter(x => x.startsWith("S_"));
   let lstSheet_T = worksheet.SheetNames.filter(x => x.startsWith("T_") && (x !== "T_TepDuLieu"));
+  let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_"));
   _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, fileDinhKem)
   // let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_")); ignore
   for (let sheet of lstSheet_S) {
@@ -29,7 +30,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
     _Sdata[sheet] = await buildS_Data(worksheet.Sheets[sheet], cacheDanhMuc, database);
   }
 
-  for (let sheet of lstSheet_T) {
+  for (let sheet of [...lstSheet_T, ...lstSheet_C]) {
     // build T_
     _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database, _fileData);
     if (Array.isArray(_Tdata[sheet])) {
