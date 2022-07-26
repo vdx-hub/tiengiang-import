@@ -40,6 +40,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
       })
       for (let record of _Tdata[sheet]) {
         const dataToCreate = addMetadataImport(record, fileName);
+        dataToCreate['type'] = sheet;
         await bulkService.bulkUpsertAdd({
           sourceRefId: dataToCreate['sourceRef'] + "___" + record[findFirstColumnKey(getHeaderRow(worksheet.Sheets[sheet])[0]) || Object.keys(record)[0]]
         }, dataToCreate);
