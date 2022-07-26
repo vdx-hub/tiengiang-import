@@ -308,7 +308,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
           danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
           if (danhMucData[danhMuc]) {
             if (danhMucData[danhMuc][sheetData[index][colName]]) {
-              sheetData[index][keyToSave] = danhMucData[danhMuc][sheetData[index][colName].trim()]
+              sheetData[index][keyToSave] = danhMucData[danhMuc][sheetData[index][colName]?.trim()]
             }
             else {
               sheetData[index][keyToSave] = {
