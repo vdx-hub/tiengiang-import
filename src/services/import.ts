@@ -313,7 +313,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
             else {
               sheetData[index][keyToSave] = {
                 _source: {
-                  [keySearch]: sheetData[index][colName].trim()
+                  [keySearch]: sheetData[index][colName]?.trim()
                 }
               }
             }
