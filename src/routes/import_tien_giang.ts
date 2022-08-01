@@ -14,7 +14,7 @@ var upload = multer({
       }
     },
     filename: function (_req, file, cb) {
-      cb(null, `${path.basename(file.originalname)}`);
+      cb(null, `${Date.now()}${path.extname(file.originalname)}`);
     },
   }),
 });

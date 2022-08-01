@@ -346,7 +346,7 @@ async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: 
   sheetData.splice(0, 1);
   for (let index in sheetData) {
     sheetData[index]['fileName'] = `${sheetData[index]['TenTep']}.${sheetData[index]['DinhDang']}`;
-    sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index]['IDVanBanDTM']}___${sheetData[index]['fileName']}`;
+    sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index][Object.keys(sheetData[index])[0]]}___${sheetData[index]['fileName']}`;
     for (let fileExpress of fileDinhKem) {
       if (fileExpress.originalname == sheetData[index].fileName) {
         let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
