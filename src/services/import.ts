@@ -64,17 +64,20 @@ function groupBy(xs: any[], key: string) {
     return rv;
   }, {});
 };
-function getHeaderRow(worksheet: any): string[] {
-  let headers = [];
-  var range = XLSX.utils.decode_range(worksheet['!ref'] || '');
-  var C = range.s.c;
-  for (C = range.s.c; C <= range.e.c; ++C) {
-    var cell = worksheet[XLSX.utils.encode_cell({ c: C, r: 0 })] /* find the cell in the first row */
-    var hdr = "Cột không tên " + C; // <-- replace with your desired default 
-    if (cell && cell.t) hdr = XLSX.utils.format_cell(cell);
-    headers.push(hdr);
+function getHeaderRow(worksheet: any): any {
+  if (worksheet) {
+    let headers = [];
+    var range = XLSX.utils.decode_range(worksheet['!ref'] || '');
+    var C = range.s.c;
+    for (C = range.s.c; C <= range.e.c; ++C) {
+      var cell = worksheet[XLSX.utils.encode_cell({ c: C, r: 0 })] /* find the cell in the first row */
+      var hdr = "Cột không tên " + C; // <-- replace with your desired default 
+      if (cell && cell.t) hdr = XLSX.utils.format_cell(cell);
+      headers.push(hdr);
+    }
+    return headers;
   }
-  return headers;
+  return;
 }
 async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: string) {
   const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
