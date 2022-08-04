@@ -122,7 +122,7 @@ async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: strin
                 })
               }
             }
-            sheetData[index][keyToSave] = finalValue;
+            sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...finalValue]
           }
           else {
             return {
@@ -282,7 +282,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
                 })
               }
             }
-            sheetData[index][keyToSave] = finalValue;
+            sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...finalValue]
           }
           else {
             return {
@@ -336,7 +336,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
         // normal key text
         if (colName.endsWith("[]")) {
           let keyToSave = colName.replace("[]", "");
-          sheetData[index][keyToSave] = sheetData[index][colName].split("||");
+          sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...sheetData[index][colName].split("||")]
           delete sheetData[index][colName];
         }
       }
