@@ -23,7 +23,9 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
   let lstSheet_S = worksheet.SheetNames.filter(x => x.startsWith("S_"));
   let lstSheet_T = worksheet.SheetNames.filter(x => x.startsWith("T_") && (x !== "T_TepDuLieu"));
   let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_"));
-  _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, fileDinhKem)
+  if (worksheet.Sheets["T_TepDuLieu"]) {
+    _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, fileDinhKem)
+  }
   // let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_")); ignore
   for (let sheet of lstSheet_S) {
     // Build S_
