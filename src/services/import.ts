@@ -108,7 +108,7 @@ async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: strin
           }
           danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
           if (danhMucData[danhMuc]) {
-            let lstValue = sheetData[index][colName].split("||");
+            let lstValue = String(sheetData[index][colName]).split("||");
             let finalValue = [];
             for (let val of lstValue) {
               if (danhMucData[danhMuc][val]) {
@@ -268,30 +268,21 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
           }
           danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
           if (danhMucData[danhMuc]) {
-            if (sheetData[index][colName]) {
-              let lstValue = sheetData[index][colName].split("||");
-              let finalValue = [];
-              for (let val of lstValue) {
-                if (danhMucData[danhMuc][val]) {
-                  finalValue.push(danhMucData[danhMuc][val])
-                }
-                else {
-                  finalValue.push({
-                    _source: {
-                      [keySearch]: val
-                    }
-                  })
-                }
+            let lstValue = String(sheetData[index][colName]).split("||");
+            let finalValue = [];
+            for (let val of lstValue) {
+              if (danhMucData[danhMuc][val]) {
+                finalValue.push(danhMucData[danhMuc][val])
               }
-              sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...finalValue]
-            }
-            else {
-              return {
-                status: "error",
-                msg: `${sheetData} ${index} ${colName} value not found!`
+              else {
+                finalValue.push({
+                  _source: {
+                    [keySearch]: val
+                  }
+                })
               }
             }
-
+            sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...finalValue]
           }
           else {
             return {
@@ -345,7 +336,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
         // normal key text
         if (colName.endsWith("[]")) {
           let keyToSave = colName.replace("[]", "");
-          sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...sheetData[index][colName].split("||")]
+          sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...String(sheetData[index][colName]).split("||")]
           delete sheetData[index][colName];
         }
       }
