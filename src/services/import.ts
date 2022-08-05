@@ -268,21 +268,30 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
           }
           danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
           if (danhMucData[danhMuc]) {
-            let lstValue = sheetData[index][colName].split("||");
-            let finalValue = [];
-            for (let val of lstValue) {
-              if (danhMucData[danhMuc][val]) {
-                finalValue.push(danhMucData[danhMuc][val])
+            if (sheetData[index][colName]) {
+              let lstValue = sheetData[index][colName].split("||");
+              let finalValue = [];
+              for (let val of lstValue) {
+                if (danhMucData[danhMuc][val]) {
+                  finalValue.push(danhMucData[danhMuc][val])
+                }
+                else {
+                  finalValue.push({
+                    _source: {
+                      [keySearch]: val
+                    }
+                  })
+                }
               }
-              else {
-                finalValue.push({
-                  _source: {
-                    [keySearch]: val
-                  }
-                })
+              sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...finalValue]
+            }
+            else {
+              return {
+                status: "error",
+                msg: `${sheetData} ${index} ${colName} value not found!`
               }
             }
-            sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...finalValue]
+
           }
           else {
             return {
