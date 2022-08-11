@@ -34,7 +34,10 @@ async function getDanhMuc(db: string, config: ImportConfig, cacheDanhMuc: string
       let doc: any = await cursor.next();
       const { _id, ...key } = doc;
       danhMuc[doc[config.KeySearch]] = {
-        _source: key,
+        _source: {
+          ...key,
+          type: config.DanhMuc
+        },
         _id: String(_id)
       };
     }

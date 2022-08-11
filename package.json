@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon --delay 100ms --watch dist dist/index.js",
+    "start": "nodemon --delay 100ms --watch dist dist/index.js --signal SIGINT",
     "build:clean": "rimraf ./dist && tsc && tsc-alias",
-    "dev": "npm run build:clean && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"tsc -w\" \"tsc-alias -w\" \"nodemon --delay 100ms --watch dist dist/index.js\""
+    "dev": "npm run build:clean && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"tsc -w\" \"tsc-alias -w\" \"nodemon --delay 100ms --watch dist dist/index.js --signal SIGINT\""
   },
   "keywords": [],
   "author": "",

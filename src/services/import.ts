@@ -23,7 +23,9 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
   let lstSheet_S = worksheet.SheetNames.filter(x => x.startsWith("S_"));
   let lstSheet_T = worksheet.SheetNames.filter(x => x.startsWith("T_") && (x !== "T_TepDuLieu"));
   let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_"));
-  _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, fileDinhKem)
+  if (worksheet.Sheets["T_TepDuLieu"]) {
+    _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, fileDinhKem)
+  }
   // let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_")); ignore
   for (let sheet of lstSheet_S) {
     // Build S_
@@ -106,7 +108,7 @@ async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: strin
           }
           danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
           if (danhMucData[danhMuc]) {
-            let lstValue = sheetData[index][colName].split("||");
+            let lstValue = String(sheetData[index][colName]).split("||");
             let finalValue = [];
             for (let val of lstValue) {
               if (danhMucData[danhMuc][val]) {
@@ -120,7 +122,7 @@ async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: strin
                 })
               }
             }
-            sheetData[index][keyToSave] = finalValue;
+            sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...finalValue]
           }
           else {
             return {
@@ -266,7 +268,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
           }
           danhMucData[danhMuc] = danhMucData[danhMuc] || await getDanhMuc(database, config, cacheDanhMuc);
           if (danhMucData[danhMuc]) {
-            let lstValue = sheetData[index][colName].split("||");
+            let lstValue = String(sheetData[index][colName]).split("||");
             let finalValue = [];
             for (let val of lstValue) {
               if (danhMucData[danhMuc][val]) {
@@ -280,7 +282,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
                 })
               }
             }
-            sheetData[index][keyToSave] = finalValue;
+            sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...finalValue]
           }
           else {
             return {
@@ -334,7 +336,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
         // normal key text
         if (colName.endsWith("[]")) {
           let keyToSave = colName.replace("[]", "");
-          sheetData[index][keyToSave] = sheetData[index][colName].split("||");
+          sheetData[index][keyToSave] = [...sheetData[index][keyToSave] || [], ...String(sheetData[index][colName]).split("||")]
           delete sheetData[index][colName];
         }
       }
