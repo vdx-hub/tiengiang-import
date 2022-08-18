@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npm build:clean && nodemon --delay 100ms --watch src src/index.ts",
+    "dev": "nodemon --delay 100ms --watch src src/index.ts",
     "build:clean": "rimraf ./dist && tsc",
-    "start": "node ./dist/"
+    "start": "npm run build:clean && node ./dist/"
   },
   "keywords": [],
   "author": "",
