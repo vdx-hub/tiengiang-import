@@ -92,6 +92,9 @@ async function uploadFileFS(client: MongoClient, bucket: string, fileName: strin
   if (await pathExists(filePath)) {
     fileUpload = createReadStream(filePath).pipe(gridfs.openUploadStream(fileName, {
       chunkSizeBytes: 102400,
+      metadata: {
+        sourceRef: filePath,
+      },
       aliases: ["/upload/:bucket"],
     }))
   }
