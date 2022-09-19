@@ -89,7 +89,7 @@ async function uploadFileFS(client: MongoClient, bucket: string, fileName: strin
     bucketName: bucket
   })
   let fileUpload;
-  if (await pathExists(filePath)) {
+  const upload = (filePath: string) => {
     fileUpload = createReadStream(filePath).pipe(gridfs.openUploadStream(fileName, {
       chunkSizeBytes: 102400,
       metadata: {
@@ -97,6 +97,19 @@ async function uploadFileFS(client: MongoClient, bucket: string, fileName: strin
       },
       aliases: ["/upload/:bucket"],
     }))
+  };
+
+  if (await pathExists(filePath)) {
+    upload(filePath)
+  }
+  else if (await pathExists(filePath.replace('&', '_'))) {
+    upload(filePath.replace('&', '_'))
+  }
+  else if (await pathExists(filePath.replace('.pdf', '.PDF'))) {
+    upload(filePath.replace('&', '_'))
+  }
+  else if (await pathExists(filePath.replace('.PDF', '.pdf'))) {
+    upload(filePath.replace('&', '_'))
   }
   else {
     console.log('filePath', filePath, 'not found!')
