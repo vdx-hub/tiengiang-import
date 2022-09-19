@@ -26,6 +26,11 @@ var upload = multer({
 });
 
 const router = express.Router();
+router.get('/ping', async function (_req, res) {
+  res.status(200).send({
+    msg: '200ok'
+  })
+})
 router.post('/importXlsx/:database/preview', upload.single('file'), async function (req, res) {
   if (req.file) {
     const metadata = await previewXLSX({
@@ -90,4 +95,21 @@ router.post('/importXlsx/v2/:database/confirm', upload.fields([{
     res.status(400).send('File not found');
   }
 })
+
+router.post('/importXlsx/v3/:database/', upload.fields([{
+  name: 'file', maxCount: 1
+}, {
+  name: 'tepdinhkem', maxCount: 100
+}]), async function (req, res) {
+  if (req.files) {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const isTienGiang = true;
+    const metadata = await blindProcessXLSX(files, req.body.cacheDanhMuc, req.params.database, isTienGiang);
+    res.status(200).send(metadata)
+  }
+  else {
+    res.status(400).send('File not found');
+  }
+})
+
 export default router

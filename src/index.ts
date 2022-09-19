@@ -30,5 +30,5 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 // app.use('/tiengiang', TienGiangRouter)
 app.use('/tiengiang', ImportNghiepVuRouter)
 app.listen(9000, async () => {
-  console.log("Server is up!");
+  console.log("Server is up at port 9000");
 })

@@ -14,7 +14,7 @@ const _clientGridFS = new MongoClient(process.env.MONGODBFS_URI || '', {
 _client.connect();
 _clientGridFS.connect();
 // _client.on("serverOpening", (e) => {
-//   log('serverOpening', e)
+//   console.log('serverOpening', e)
 // })
 export { _client, _clientGridFS }
 
