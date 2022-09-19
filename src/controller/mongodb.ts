@@ -84,4 +84,21 @@ async function uploadExpressFile(client: MongoClient, bucket: string, fileName: 
   return fileUpload;
 }
 
-export default { createOne, deleteOne, updateById, updateOne, findOne, updateMany, findOneById, createOneIfNotExist, findMany, bulkCreateOneIfNotExist, uploadExpressFile };
+async function uploadFileFS(client: MongoClient, bucket: string, fileName: string, filePath: string) {
+  const gridfs = new GridFSBucket(client.db("oauth2"), {
+    bucketName: bucket
+  })
+  let fileUpload;
+  if (await pathExists(filePath)) {
+    fileUpload = createReadStream(filePath).pipe(gridfs.openUploadStream(fileName, {
+      chunkSizeBytes: 102400,
+      aliases: ["/upload/:bucket"],
+    }))
+  }
+  else {
+    console.log('filePath', filePath, 'not found!')
+  }
+  return fileUpload;
+}
+
+export default { createOne, deleteOne, updateById, updateOne, findOne, updateMany, findOneById, createOneIfNotExist, findMany, bulkCreateOneIfNotExist, uploadExpressFile, uploadFileFS };

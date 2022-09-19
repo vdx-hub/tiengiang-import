@@ -7,15 +7,23 @@ import { readFile } from 'fs-extra';
 
 // import { getDanhMuc } from './danh_muc';
 
-async function blindProcessXLSX(files: { [fieldname: string]: Express.Multer.File[] }, cacheDanhMuc: string = 'false', database: string) {
-  let xlsxBuffer = await readFile(files.file[0].path)
-  var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
-  let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database, files.file[0].originalname, files.tepdinhkem);
+async function blindProcessXLSX(files: { [fieldname: string]: Express.Multer.File[] }, cacheDanhMuc: string = 'false', database: string, isTienGiang?: boolean) {
+  if (files?.file?.[0]?.path) {
+    let xlsxBuffer = await readFile(files.file[0].path)
+    var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
+    let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database, files.file[0].originalname, isTienGiang, files.tepdinhkem);
 
-  return sheetData;
+    return sheetData;
+  }
+  else {
+    return {
+      err: 'File not found'
+    }
+  }
+
 }
 
-async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string, fileName: string, fileDinhKem?: Express.Multer.File[]) {
+async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string, fileName: string, isTienGiang?: boolean, fileDinhKem?: Express.Multer.File[],) {
   const responseData: any = {};
   const _Sdata: any = {};
   const _Tdata: any = {};
@@ -24,7 +32,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
   let lstSheet_T = worksheet.SheetNames.filter(x => x.startsWith("T_") && (x !== "T_TepDuLieu"));
   let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_"));
   if (worksheet.Sheets["T_TepDuLieu"]) {
-    _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, fileDinhKem)
+    _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, isTienGiang, fileDinhKem)
   }
   // let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_")); ignore
   for (let sheet of lstSheet_S) {
@@ -345,44 +353,83 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
   return sheetData;
 }
 
-async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: string, fileDinhKem?: Express.Multer.File[]) {
-  if (!fileDinhKem) return;
-  const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
-  sheetData.splice(0, 1);
-  for (let index in sheetData) {
-    sheetData[index]['fileName'] = `${sheetData[index]['TenTep']}.${sheetData[index]['DinhDang']}`;
-    sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index][Object.keys(sheetData[index])[0]]}___${sheetData[index]['fileName']}`;
-    for (let fileExpress of fileDinhKem) {
-      if (fileExpress.originalname.toLocaleLowerCase() === sheetData[index].fileName.toLocaleLowerCase()) {
-        let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
-        if (fileUploaded) {
-          sheetData[index]['uploadData'] = {
-            "bucketName": "T_TepDuLieu",
-            "chunkSize": 102400,
-            "originalname": fileUploaded.filename,
-            "encoding": "7bit",
-            "filename": fileUploaded.filename,
-            "size": fileUploaded.chunkSizeBytes,
-            "uploadDate": new Date().toISOString(),
-            "id": String(fileUploaded.id),
-            "contentType": fileUploaded.options.contentType || "",
-          }
+async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: string, isTienGiang?: boolean, fileDinhKem?: Express.Multer.File[],) {
+  if (isTienGiang) {
+    const filePathTienGiang = `uploadTienGiang/`;
+    console.log('Import file Tiền Giang');
+    const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
+    sheetData.splice(0, 1);
+    for (let index in sheetData) {
+      sheetData[index]['fileName'] = sheetData[index]['TenTep'];
+      sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index][Object.keys(sheetData[index])[0]]}___${sheetData[index]['fileName']}`;
+      let fileUploaded = await DBUtils.uploadFileFS(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], filePathTienGiang + sheetData[index]['fileName']);
+      if (fileUploaded) {
+        sheetData[index]['uploadData'] = {
+          "bucketName": "T_TepDuLieu",
+          "chunkSize": 102400,
+          "originalname": fileUploaded.filename,
+          "encoding": "7bit",
+          "filename": fileUploaded.filename,
+          "size": fileUploaded.chunkSizeBytes,
+          "uploadDate": new Date().toISOString(),
+          "id": String(fileUploaded.id),
+          "contentType": fileUploaded.options.contentType || "",
         }
-        break;
       }
+      const dataToCreate = addMetadataImport(JSON.parse(JSON.stringify(sheetData[index])), fileName);
+      let created = await DBUtils.createOneIfNotExist(_client, {
+        dbName: database,
+        collectionName: "T_TepDuLieu",
+        filter: {
+          sourceRefId: sheetData[index]['sourceRefId']
+        },
+        insertData: dataToCreate
+      })
+      sheetData[index]["idTepDuLieu"] = String(created.upsertedId);
     }
-    const dataToCreate = addMetadataImport(JSON.parse(JSON.stringify(sheetData[index])), fileName);
-    let created = await DBUtils.createOneIfNotExist(_client, {
-      dbName: database,
-      collectionName: "T_TepDuLieu",
-      filter: {
-        sourceRefId: sheetData[index]['sourceRefId']
-      },
-      insertData: dataToCreate
-    })
-    sheetData[index]["idTepDuLieu"] = String(created.upsertedId);
+    return groupBy(sheetData, getHeaderRow(worksheet)[0]);
   }
-  return groupBy(sheetData, getHeaderRow(worksheet)[0]);
+  else {
+    if (!fileDinhKem) return;
+    const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
+    sheetData.splice(0, 1);
+    for (let index in sheetData) {
+      sheetData[index]['fileName'] = `${sheetData[index]['TenTep']}.${sheetData[index]['DinhDang']}`;
+      sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index][Object.keys(sheetData[index])[0]]}___${sheetData[index]['fileName']}`;
+      for (let fileExpress of fileDinhKem) {
+        if (fileExpress.originalname.toLocaleLowerCase() === sheetData[index].fileName.toLocaleLowerCase()) {
+          let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
+          if (fileUploaded) {
+            sheetData[index]['uploadData'] = {
+              "bucketName": "T_TepDuLieu",
+              "chunkSize": 102400,
+              "originalname": fileUploaded.filename,
+              "encoding": "7bit",
+              "filename": fileUploaded.filename,
+              "size": fileUploaded.chunkSizeBytes,
+              "uploadDate": new Date().toISOString(),
+              "id": String(fileUploaded.id),
+              "contentType": fileUploaded.options.contentType || "",
+            }
+          }
+          break;
+        }
+      }
+      const dataToCreate = addMetadataImport(JSON.parse(JSON.stringify(sheetData[index])), fileName);
+      let created = await DBUtils.createOneIfNotExist(_client, {
+        dbName: database,
+        collectionName: "T_TepDuLieu",
+        filter: {
+          sourceRefId: sheetData[index]['sourceRefId']
+        },
+        insertData: dataToCreate
+      })
+      sheetData[index]["idTepDuLieu"] = String(created.upsertedId);
+    }
+    return groupBy(sheetData, getHeaderRow(worksheet)[0]);
+  }
+
+
 }
 
 function addMetadataImport(record: any, fileName: string) {
