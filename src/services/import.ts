@@ -375,17 +375,18 @@ async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: 
           "id": String(fileUploaded.id),
           "contentType": fileUploaded.options.contentType || "",
         }
+        const dataToCreate = addMetadataImport(JSON.parse(JSON.stringify(sheetData[index])), fileName);
+        let created = await DBUtils.createOneIfNotExist(_client, {
+          dbName: database,
+          collectionName: "T_TepDuLieu",
+          filter: {
+            sourceRefId: fileUploaded.id
+          },
+          insertData: dataToCreate
+        })
+        sheetData[index]["idTepDuLieu"] = String(created.upsertedId);
       }
-      const dataToCreate = addMetadataImport(JSON.parse(JSON.stringify(sheetData[index])), fileName);
-      let created = await DBUtils.createOneIfNotExist(_client, {
-        dbName: database,
-        collectionName: "T_TepDuLieu",
-        filter: {
-          sourceRefId: sheetData[index]['sourceRefId']
-        },
-        insertData: dataToCreate
-      })
-      sheetData[index]["idTepDuLieu"] = String(created.upsertedId);
+
     }
     return groupBy(sheetData, getHeaderRow(worksheet)[0]);
   }
