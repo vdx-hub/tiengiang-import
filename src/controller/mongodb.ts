@@ -69,6 +69,14 @@ async function bulkCreateOneIfNotExist(client: MongoClient, { dbName, collection
   return { bulk, bulkUpsertAdd }
 }
 
+async function bulkUpdate(client: MongoClient, { dbName, collectionName }: { dbName: string; collectionName: string; }) {
+  var bulk = client.db(dbName).collection(collectionName).initializeUnorderedBulkOp();
+  var bulkUpsertAdd = async (filter: object, insertData: object) => {
+    bulk.find(filter).upsert().update({ $set: addMetadataCreate(insertData) })
+  }
+  return { bulk, bulkUpsertAdd }
+}
+
 async function uploadExpressFile(client: MongoClient, bucket: string, fileName: string, file: Express.Multer.File) {
   const gridfs = new GridFSBucket(client.db("oauth2"), {
     bucketName: bucket
@@ -118,4 +126,4 @@ async function uploadFileFS(client: MongoClient, bucket: string, fileName: strin
   return fileUpload;
 }
 
-export default { createOne, deleteOne, updateById, updateOne, findOne, updateMany, findOneById, createOneIfNotExist, findMany, bulkCreateOneIfNotExist, uploadExpressFile, uploadFileFS };
+export default { createOne, deleteOne, updateById, updateOne, findOne, updateMany, findOneById, createOneIfNotExist, findMany, bulkCreateOneIfNotExist, uploadExpressFile, uploadFileFS, bulkUpdate };

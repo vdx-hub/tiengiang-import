@@ -7,11 +7,11 @@ import { readFile } from 'fs-extra';
 
 // import { getDanhMuc } from './danh_muc';
 
-async function blindProcessXLSX(files: { [fieldname: string]: Express.Multer.File[] }, cacheDanhMuc: string = 'false', database: string, isTienGiang?: boolean) {
+async function blindProcessXLSX(files: { [fieldname: string]: Express.Multer.File[] }, cacheDanhMuc: string = 'false', database: string, isTienGiang?: boolean, isUpdate?: boolean) {
   if (files?.file?.[0]?.path) {
     let xlsxBuffer = await readFile(files.file[0].path)
     var workbook = XLSX.read(xlsxBuffer, { type: "buffer" });
-    let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database, files.file[0].originalname, isTienGiang, files.tepdinhkem);
+    let sheetData = await mapConfigSheet(workbook, cacheDanhMuc, database, files.file[0].originalname, isTienGiang, files.tepdinhkem, isUpdate);
 
     return sheetData;
   }
@@ -23,7 +23,7 @@ async function blindProcessXLSX(files: { [fieldname: string]: Express.Multer.Fil
 
 }
 
-async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string, fileName: string, isTienGiang?: boolean, fileDinhKem?: Express.Multer.File[],) {
+async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = 'false', database: string, fileName: string, isTienGiang?: boolean, fileDinhKem?: Express.Multer.File[], isUpdate?: boolean) {
   const responseData: any = {};
   const _Sdata: any = {};
   const _Tdata: any = {};
@@ -44,10 +44,20 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
     // build T_
     _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database, _fileData);
     if (Array.isArray(_Tdata[sheet])) {
-      const bulkService = await DBUtils.bulkCreateOneIfNotExist(_client, {
-        dbName: database,
-        collectionName: sheet
-      })
+      let bulkService;
+      if (!isUpdate) {
+        bulkService = await DBUtils.bulkCreateOneIfNotExist(_client, {
+          dbName: database,
+          collectionName: sheet
+        })
+      }
+      else {
+        bulkService = await DBUtils.bulkUpdate(_client, {
+          dbName: database,
+          collectionName: sheet
+        })
+      }
+
       for (let record of _Tdata[sheet]) {
         const dataToCreate = addMetadataImport(record, fileName);
         dataToCreate['type'] = sheet;
