@@ -42,7 +42,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
 
   for (let sheet of [...lstSheet_T, ...lstSheet_C]) {
     // build T_
-    _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database, _fileData);
+    _Tdata[sheet] = await buildT_Data(worksheet.Sheets[sheet], _Sdata, cacheDanhMuc, database, _fileData, isUpdate);
     if (Array.isArray(_Tdata[sheet])) {
       let bulkService;
       if (!isUpdate) {
@@ -196,7 +196,7 @@ async function buildS_Data(worksheet: any, cacheDanhMuc: string, database: strin
   }
   return groupBy(sheetData, getHeaderRow(worksheet)[0])
 }
-async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: string, database: string, _fileData: any) {
+async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: string, database: string, _fileData: any, isUpdate?: boolean) {
   const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
   const danhMucData: any = {};
   sheetData.splice(0, 1);
@@ -240,7 +240,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
                 keyToSave = config.replace("S_", ""); // ABC
               }
               if (prebuildDataToGet === "T_TepDuLieu") {
-                if (_fileData) {
+                if (_fileData && !isUpdate) {
                   sheetData[index][keyToSave] = _fileData[sheetData[index][colName]];
                 }
               }
@@ -261,7 +261,7 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
               keyToSave = listConfig[0].replace("S_", ""); // ABC
             }
             if (prebuildDataToGet === "T_TepDuLieu") {
-              if (_fileData) {
+              if (_fileData && !isUpdate) {
                 sheetData[index][keyToSave] = _fileData[sheetData[index][colName]];
               }
             }
