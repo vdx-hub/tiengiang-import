@@ -161,7 +161,7 @@ function addMetadataImport(record: any, fileName: string) {
   let data = record;
   data['sourceRef'] = `ImportXlsx_${fileName}`;
   data['username'] = `ImportSevice`;
-  data['openAccess'] = 0;
+  data['openAccess'] = 2;
   data['order'] = 0;
   data['site'] = 'csdl_mt';
   data['storage'] = 'regular';
