@@ -164,7 +164,18 @@ function addMetadataImport(record: any, fileName: string) {
   data['openAccess'] = 2;
   data['order'] = 0;
   data['site'] = 'csdl_mt';
-  data['storage'] = 'regular';
+  data['storage'] = '03_import';
+  data['metadata.ThoiGianTao'] = Date.now()
+  data['metadata.ThoiGianCapNhat'] = Date.now()
+  data['metadata.TrangThaiDuLieu'] = {
+    '_source':{
+      'MaMuc':'01',
+      'TenMuc':'Sơ bộ',
+      'type':'C_TrangThaiDuLieu'
+    }
+  }
+  data['metadata.MaNguonDuLieu.MaNguonDuLieu'] = 'ImportSevice'
+  data['metadata.MaNguonDuLieu.LoDuLieu'] = `${fileName}`
   data["accessRoles"] = [
     {
       "shortName": "admin",
@@ -175,6 +186,7 @@ function addMetadataImport(record: any, fileName: string) {
       "permission": "2"
     }
   ]
+  console.log('data', data)
   return data;
 }
 

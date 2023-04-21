@@ -32,6 +32,7 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
   let lstSheet_T = worksheet.SheetNames.filter(x => x.startsWith("T_") && (x !== "T_TepDuLieu"));
   let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_"));
   if (worksheet.Sheets["T_TepDuLieu"] && !isUpdate) {
+    
     _fileData = await buildTepDuLieu(worksheet.Sheets["T_TepDuLieu"], database, fileName, isTienGiang, fileDinhKem)
   }
   // let lstSheet_C = worksheet.SheetNames.filter(x => x.startsWith("C_")); ignore
@@ -61,8 +62,10 @@ async function mapConfigSheet(worksheet: XLSX.WorkBook, cacheDanhMuc: string = '
       for (let record of _Tdata[sheet]) {
         const dataToCreate = addMetadataImport(record, fileName);
         dataToCreate['type'] = sheet;
+        console.log('dataToCreate', dataToCreate)
         await bulkService.bulkUpsertAdd({
-          sourceRefId: dataToCreate['sourceRef'] + "___" + record[findFirstColumnKey(getHeaderRow(worksheet.Sheets[sheet])[0]) || Object.keys(record)[0]]
+          sourceRefId: dataToCreate['sourceRef'] + "___" + record[findFirstColumnKey(getHeaderRow(worksheet.Sheets[sheet])[0]) || Object.keys(record)[0]],
+          storage:'03_import'
         }, dataToCreate);
       }
       try {
@@ -365,14 +368,29 @@ async function buildT_Data(worksheet: WorkSheet, _Sdata: any, cacheDanhMuc: stri
 
 async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: string, isTienGiang?: boolean, fileDinhKem?: Express.Multer.File[],) {
   if (isTienGiang) {
-    const filePathTienGiang = `uploadTienGiang/`;
+    const filePathTienGiang = `ScanCSDLMT2023__/`;
+    const filePathTienGiangDot4 = `uploadTienGiangDot4/`;
+    const filePathTienGiangDot2 = `uploadTienGiangDot2/`;
+    const filePathTienGiangDot1 = `uploadTienGiangDot1/`;
     console.log('Import file Tiền Giang');
     const sheetData: any = XLSX.utils.sheet_to_json(worksheet);
     sheetData.splice(0, 1);
     for (let index in sheetData) {
-      sheetData[index]['fileName'] = sheetData[index]['TenTep'];
+      sheetData[index]['fileName'] = `${sheetData[index]['TenTep']}.${sheetData[index]['DinhDang']}`;
+      sheetData[index]['bucketName'] = 'T_TepDuLieu',
       sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index][Object.keys(sheetData[index])[0]]}___${sheetData[index]['fileName']}`;
+      sheetData[index]['originalname'] =  `${sheetData[index]['TenTep']}.${sheetData[index]['DinhDang']}`;
+      sheetData[index]['filename'] = sheetData[index]['sourceRefId'];
       let fileUploaded = await DBUtils.uploadFileFS(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], filePathTienGiang + sheetData[index]['fileName']);
+      if(!fileUploaded){
+        fileUploaded = await DBUtils.uploadFileFS(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], filePathTienGiangDot4 + sheetData[index]['fileName']);
+      }
+      if(!fileUploaded){
+        fileUploaded = await DBUtils.uploadFileFS(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], filePathTienGiangDot2 + sheetData[index]['fileName']);
+      }
+      if(!fileUploaded){
+        fileUploaded = await DBUtils.uploadFileFS(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], filePathTienGiangDot1 + sheetData[index]['fileName']);
+      }
       if (fileUploaded) {
         sheetData[index]['uploadData'] = {
           "bucketName": "T_TepDuLieu",
@@ -406,7 +424,10 @@ async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: 
     sheetData.splice(0, 1);
     for (let index in sheetData) {
       sheetData[index]['fileName'] = `${sheetData[index]['TenTep']}.${sheetData[index]['DinhDang']}`;
-      sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index][Object.keys(sheetData[index])[0]]}___${sheetData[index]['fileName']}`;
+    sheetData[index]['bucketName'] = 'T_TepDuLieu',
+    sheetData[index]['sourceRefId'] = `${fileName}___${sheetData[index][Object.keys(sheetData[index])[0]]}___${sheetData[index]['fileName']}`;
+    sheetData[index]['originalname'] =  `${sheetData[index]['TenTep']}.${sheetData[index]['DinhDang']}`;
+    sheetData[index]['filename'] = `${fileName}___${sheetData[index][Object.keys(sheetData[index])[0]]}___${sheetData[index]['fileName']}`;
       for (let fileExpress of fileDinhKem) {
         if (fileExpress.originalname.toLocaleLowerCase() === sheetData[index].fileName.toLocaleLowerCase()) {
           let fileUploaded = await DBUtils.uploadExpressFile(_clientGridFS, "T_TepDuLieu", sheetData[index]['sourceRefId'], fileExpress);
@@ -444,25 +465,44 @@ async function buildTepDuLieu(worksheet: WorkSheet, database: string, fileName: 
 }
 
 function addMetadataImport(record: any, fileName: string) {
-  let data = record;
-  data['sourceRef'] = `ImportXlsx_${fileName}`;
-  data['username'] = `ImportSevice`;
-  data['openAccess'] = 2;
-  data['order'] = 0;
-  data['site'] = 'csdl_mt';
-  data['storage'] = 'regular';
-  data["accessRoles"] = [
-    {
-      "shortName": "admin",
-      "permission": "2"
-    },
-    {
-      "shortName": "AdminData",
-      "permission": "2"
+    let data = record;
+    data['sourceRef'] = `ImportXlsx_${fileName}`;
+    data['username'] = `ImportSevice`;
+    data['openAccess'] = 0;
+    data['order'] = 0;
+    data['site'] = 'csdl_mt';
+    data['storage'] = '03_import';
+    data['metadata.ThoiGianTao'] = Date.now()
+    data['metadata.ThoiGianCapNhat'] = Date.now()
+    data['metadata.TrangThaiDuLieu'] = {
+      '_source':{
+        'MaMuc':'01',
+        'TenMuc':'Sơ bộ',
+        'type':'C_TrangThaiDuLieu'
+      }
     }
-  ]
-  return data;
-}
+    data['metadata.MaNguonDuLieu.MaNguonDuLieu'] = 'ImportSevice'
+    data['metadata.MaNguonDuLieu.LoDuLieu'] = `${fileName}`
+    
+    data['TrangThaiDuLieu'] = {
+      '_source':{
+        'MaMuc':'01',
+        'TenMuc':'Sơ bộ',
+        'type':'C_TrangThaiDuLieu'
+      }
+    };
+    data["accessRoles"] = [
+      {
+        "shortName": "admin",
+        "permission": "2"
+      },
+      {
+        "shortName": "AdminData",
+        "permission": "2"
+      }
+    ]
+    return data;
+  }
 function findFirstColumnKey(columnName: string | undefined) {
   const regx = new RegExp(/^\w+/gi);
   return columnName?.match(regx)?.[0];

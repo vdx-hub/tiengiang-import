@@ -88,7 +88,9 @@ router.post('/importXlsx/v2/:database/confirm', upload.fields([{
 }]), async function (req, res) {
   if (req.files) {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const metadata = await blindProcessXLSX(files, req.body.cacheDanhMuc, req.params.database);
+    const isTienGiang = true;
+    // const metadata = await blindProcessXLSX(files, req.body.cacheDanhMuc, req.params.database);
+    const metadata = await blindProcessXLSX(files, req.body.cacheDanhMuc, req.params.database, isTienGiang, req.body.isUpdate === "true");
     res.status(200).send(metadata)
   }
   else {
